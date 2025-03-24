@@ -17,7 +17,6 @@ const LoginScreen = () => {
         Alert.alert("Lỗi", "Vui lòng nhập email và mật khẩu!");
         return;
       }
-  
       setLoading(true);
       try {
         const response = await login(email, password);
@@ -39,14 +38,13 @@ const LoginScreen = () => {
       await AsyncStorage.setItem(uuid, uuid);
   
         console.log("Login Success:", response.data);
-        router.push("/"); // Điều hướng về trang chính
+        router.push("/(tabs)"); // Điều hướng về trang chính
       } catch (error) {
         if (error instanceof Error) {
             Alert.alert("Đăng nhập thất bại", error.message);
           } else {
             Alert.alert("Đăng nhập thất bại", "Đã xảy ra lỗi không xác định.");
             console.log(error);
-            
           }
       } finally {
         setLoading(false);
@@ -56,7 +54,6 @@ const LoginScreen = () => {
   return (
     <View className="flex-1 justify-center items-center bg-gray-100 px-6">
       <Text className="text-3xl font-bold text-blue-600 mb-6">Đăng Nhập</Text>
-
       <TextInput
         className="w-full p-4 border border-gray-300 rounded-lg mb-4 bg-white shadow-sm"
         placeholder="Email"
