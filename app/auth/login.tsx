@@ -14,42 +14,51 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-        Alert.alert("Lỗi", "Vui lòng nhập email và mật khẩu!");
+      Alert.alert("Lỗi", "Vui lòng nhập email và mật khẩu!");
+      return;
+    }
+    setLoading(true);
+  
+    try {
+      console.log("🔄 Đang gửi request đăng nhập...");
+      const response = await login(email, password);
+      console.log("✅ Phản hồi từ API:", response);
+  
+      if (response.error?.code !== 0) {
+        console.log("❌ Lỗi đăng nhập từ server:", response.error);
+        Alert.alert("Lỗi", response.error?.message || "Đăng nhập thất bại!");
         return;
       }
-      setLoading(true);
-      try {
-        const response = await login(email, password);
   
-        if (response.error?.code !== 0) {
-          Alert.alert("Lỗi", response.error?.message || "Đăng nhập thất bại!");
-          return;
-        }
+      const { token, uuid, role } = response.data;
   
-        const { token, uuid, role } = response.data;
-  
-        if (role !== 0) { 
-          Alert.alert("Công ty không thể đăng nhập", "Ứng dụng này chỉ dành cho sinh viên.");
-          return;
-        }
-  
-        // Lưu token và uuid vào AsyncStorage
-        await AsyncStorage.setItem(token, token);
-      await AsyncStorage.setItem(uuid, uuid);
-  
-        console.log("Login Success:", response.data);
-        router.push("/(tabs)"); // Điều hướng về trang chính
-      } catch (error) {
-        if (error instanceof Error) {
-            Alert.alert("Đăng nhập thất bại", error.message);
-          } else {
-            Alert.alert("Đăng nhập thất bại", "Đã xảy ra lỗi không xác định.");
-            console.log(error);
-          }
-      } finally {
-        setLoading(false);
+      if (role !== 0) {
+        console.log("⚠ Công ty đang cố gắng đăng nhập, từ chối truy cập.");
+        Alert.alert("Công ty không thể đăng nhập", "Ứng dụng này chỉ dành cho sinh viên.");
+        return;
       }
+  
+      // Lưu token và uuid vào AsyncStorage
+      console.log("💾 Lưu token và UUID vào AsyncStorage...");
+      await AsyncStorage.setItem("token", token);
+      await AsyncStorage.setItem("uuid", uuid);
+  
+      console.log("🚀 Đăng nhập thành công, điều hướng về trang chính!");
+      router.push("/(tabs)");
+    } catch (error) {
+      console.log("❌ Lỗi khi đăng nhập:", error);
+  
+      if (error instanceof Error) {
+        Alert.alert("Đăng nhập thất bại", error.message);
+      } else {
+        Alert.alert("Đăng nhập thất bại", "Đã xảy ra lỗi không xác định.");
+      }
+    } finally {
+      setLoading(false);
+      console.log("⏳ Kết thúc quá trình đăng nhập.");
+    }
   };
+  
 
   return (
     <View className="flex-1 justify-center items-center bg-gray-100 px-6">
