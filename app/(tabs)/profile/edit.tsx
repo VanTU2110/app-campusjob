@@ -8,7 +8,7 @@ import { getStudentProfile, updateStudentProfile } from "@/service/studentServic
 import { getListProvinsie, getListDistrict, getListWard } from "@/service/regionService";
 import { Picker } from "@react-native-picker/picker";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { useRouter } from "expo-router";
 const EditStudentProfileScreen = ({ navigation }: { navigation: any }) => {
     const { control, handleSubmit, setValue, formState: { errors } } = useForm();
     const [selectedGender, setSelectedGender] = useState();
@@ -19,7 +19,7 @@ const EditStudentProfileScreen = ({ navigation }: { navigation: any }) => {
     const [selectedProvince, setSelectedProvince] = useState("");
     const [selectedDistrict, setSelectedDistrict] = useState("");
     const [selectedWard, setSelectedWard] = useState("");
-
+    const router = useRouter();
 
     useEffect(() => {
         fetchProfile();
@@ -129,7 +129,7 @@ const EditStudentProfileScreen = ({ navigation }: { navigation: any }) => {
             console.log("🚀 Payload gửi đi:", payload);  // Kiểm tra dữ liệu trước khi gửi
 
             await updateStudentProfile(payload);
-            navigation.replace("Profile")
+            router.back()
         } catch (error) {
             console.error("❌ Lỗi khi cập nhật hồ sơ:", error);
         }
