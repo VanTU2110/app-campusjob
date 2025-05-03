@@ -51,7 +51,7 @@ const  ConversationScreen = () =>{
   }, [fetchConversations]);
 
   const handleConversationPress = (conversation: Conversation) => {
-    router.push(`/conversation/${conversation.uuid}`);
+    router.push(`/conversations/${conversation.uuid}`);
   };
 
   const renderItem = ({ item }: { item: Conversation }) => {
