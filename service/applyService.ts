@@ -1,9 +1,8 @@
-import api  from "./api";
-import { ApplyItem, ApplyJob } from "../types/apply";
-import { GetPageApplyJobParams, GetApplyJobResponse } from "../types/apply";
+import { ApplyItem, ApplyJob, GetApplyJobResponse, GetPageApplyJobParams } from "../types/apply";
+import api from "./api";
 export const getListPageApplyJob = async (params: GetPageApplyJobParams): Promise<GetApplyJobResponse> => {
     
-    const res = await api.post('/Application/get-list-by_student', params);
+    const res = await api.post('/Application/get-list-by-student', params);
     return res.data;
 }
 export const applyJob = async (params: ApplyJob): Promise<ApplyItem> => {

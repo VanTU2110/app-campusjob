@@ -52,10 +52,11 @@ export default function TabLayout() {
         }}
         />
       <Tabs.Screen
-        name="saved"
+        name="apply"
         options={{
-          title: 'Saved',
-          tabBarIcon: ({ color }) => <FontAwesome6 name="message" size={24} color="black" />,
+          title: 'Luợt ứng tuyển',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="check" size={24} color="black" />,
+         
         }}
       />
       <Tabs.Screen

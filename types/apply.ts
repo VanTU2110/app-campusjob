@@ -1,4 +1,4 @@
-import { Pagination } from "./job";
+
 
 export interface ApplyJob {
     studentUuid : string;
@@ -13,14 +13,21 @@ export interface GetPageApplyJobParams {
 export interface ApplyItem {
     studentUuid : string;
     jobUuid : string;
-    status : string;
+    status : 'cancelled' | 'pending' | 'approved' | 'rejected';
     coverLetter : string;
     note : string;
-    applyAt: string;
+    appliedAt: string;
     updatedAt: string;
     uuid : string;
 }
-
+export interface Pagination {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }
 export interface GetApplyJobResponse {
     data: {
         items: ApplyItem[];
