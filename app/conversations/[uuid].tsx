@@ -1,14 +1,13 @@
-import { View, TextInput, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Text, Pressable } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useStudent } from '@/contexts/StudentContext';
+import { getMessages, sendMessage } from '@/service/chatService';
+import { Message } from '@/types/message';
+import { Ionicons } from '@expo/vector-icons';
 import * as SignalR from '@microsoft/signalr';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
-import { Message } from '@/types/message';
-import { sendMessage, getMessages } from '@/service/chatService';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useStudent } from '@/contexts/StudentContext';
 
 export default function ConversationScreen() {
   const { uuid } = useLocalSearchParams();
@@ -83,13 +82,35 @@ export default function ConversationScreen() {
         // Xử lý sự kiện nhận tin nhắn mới
         connection.on('ReceiveMessage', (message: Message) => {
           console.log('Received new message:', message);
+          
           // Thêm key duy nhất cho message mới
           const messageWithKey = {
             ...message,
             key: message.uuid || `${message.sendAt}-${message.senderUuid}-${Math.random()}`
           };
           
-          setMessages(prevMessages => [...prevMessages, messageWithKey]);
+          setMessages(prevMessages => {
+            // Kiểm tra xem đã có tin nhắn tạm thời của chính người dùng này chưa
+            // Nếu đã có, thay thế nó thay vì thêm mới
+            const hasTempMessage = prevMessages.some(
+              msg => msg.uuid?.startsWith('temp-') && 
+                    msg.senderUuid === message.senderUuid && 
+                    msg.content === message.content
+            );
+            
+            if (hasTempMessage) {
+              return prevMessages.map(msg => 
+                (msg.uuid?.startsWith('temp-') && 
+                 msg.senderUuid === message.senderUuid && 
+                 msg.content === message.content) 
+                  ? messageWithKey 
+                  : msg
+              );
+            } else {
+              // Nếu không có tin nhắn tạm thời, thêm mới bình thường
+              return [...prevMessages, messageWithKey];
+            }
+          });
           
           // Cuộn xuống tin nhắn mới nhất
           setTimeout(() => {
@@ -161,34 +182,139 @@ export default function ConversationScreen() {
     
     try {
       setSending(true);
+      const content = newMessage.trim();
+      const senderUuid = student.data.uuid;
       
-      const messageToSend = {
+      // Xóa nội dung tin nhắn đã gửi ngay lập tức để cải thiện UX
+      setNewMessage('');
+      
+      // Tạo một message tạm thời để hiển thị ngay lập tức với trạng thái đang gửi
+      const tempId = `temp-${Date.now()}`;
+      const tempMessage = {
+        uuid: tempId,
         conversationUuid,
-        content: newMessage.trim(),
-        senderUuid: student.data.uuid,
+        content,
+        senderUuid,
+        sendAt: new Date().toISOString(),
+        key: tempId,
+        // Thêm flag để đánh dấu tin nhắn đang được gửi
+        _sending: true
       };
       
-      const response = await sendMessage(messageToSend);
+      // Biến để theo dõi xem đã hiển thị xong tin nhắn chưa
+      let messageDisplayed = false;
       
-      if (response && response.data) {
-        // Thêm tin nhắn vào danh sách tin nhắn với key duy nhất
-        const sentMessageWithKey = {
-          ...response.data,
-          key: response.data.uuid || `${response.data.sendAt}-${response.data.senderUuid}-${Math.random()}`
-        };
-        
-        setMessages(prevMessages => [...prevMessages, sentMessageWithKey]);
-        
-        // Cuộn xuống tin nhắn mới nhất
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-        
-        // Xóa nội dung tin nhắn đã gửi
-        setNewMessage('');
+      // Thêm tin nhắn tạm thời vào danh sách tin nhắn
+      setMessages(prevMessages => [...prevMessages, tempMessage]);
+      
+      // Cuộn xuống tin nhắn mới nhất
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+      
+      // Kiểm tra kết nối SignalR và gửi tin nhắn
+      if (connectionRef.current && connectionRef.current.state === SignalR.HubConnectionState.Connected) {
+        try {
+          // Gọi phương thức Hub trực tiếp để gửi tin nhắn real-time
+          await connectionRef.current.invoke(
+            "SendMessageToConversation", 
+            conversationUuid, 
+            senderUuid, 
+            content
+          );
+          console.log("✅ Message sent via SignalR");
+          
+          // Không cần cập nhật UI vì tin nhắn sẽ được nhận lại qua ReceiveMessage event
+          messageDisplayed = true;
+          
+          // Vẫn gọi API để đảm bảo tin nhắn được lưu vào DB (trừ khi server đã tự xử lý)
+          try {
+            const messageToSend = {
+              conversationUuid,
+              content,
+              senderUuid,
+            };
+            
+            await sendMessage(messageToSend);
+            console.log("✅ Message saved to database via API");
+          } catch (apiError) {
+            console.error('Error ensuring message is saved to database:', apiError);
+            // Không cần xử lý UI vì tin nhắn đã được gửi thành công qua SignalR
+          }
+        } catch (signalRError) {
+          console.error('Error sending message via SignalR:', signalRError);
+          
+          // Nếu gửi qua SignalR thất bại, gửi qua API như trước đây
+          if (!messageDisplayed) {
+            try {
+              const messageToSend = {
+                conversationUuid,
+                content,
+                senderUuid,
+              };
+              
+              const response = await sendMessage(messageToSend);
+              console.log("✅ Message sent via API fallback");
+              
+              if (response && response.data) {
+                // Cập nhật tin nhắn tạm thời với dữ liệu thực từ API
+                setMessages(prevMessages => 
+                  prevMessages.map(msg => 
+                    msg.uuid === tempId ? {
+                      ...response.data,
+                      key: response.data.uuid || `${response.data.sendAt}-${response.data.senderUuid}-${Math.random()}`
+                    } : msg
+                  )
+                );
+                messageDisplayed = true;
+              }
+            } catch (apiError) {
+              console.error('Error sending message via API:', apiError);
+              // Đánh dấu tin nhắn gửi thất bại
+              setMessages(prevMessages => 
+                prevMessages.map(msg => 
+                  msg.uuid === tempId ? { ...msg, _failed: true, _sending: false } : msg
+                )
+              );
+            }
+          }
+        }
+      } else {
+        // Nếu không có kết nối SignalR, gửi qua API như trước đây
+        try {
+          const messageToSend = {
+            conversationUuid,
+            content,
+            senderUuid,
+          };
+          
+          const response = await sendMessage(messageToSend);
+          console.log("✅ Message sent via API (no SignalR connection)");
+          
+          if (response && response.data) {
+            // Cập nhật tin nhắn tạm thời với dữ liệu thực từ API
+            setMessages(prevMessages => 
+              prevMessages.map(msg => 
+                msg.uuid === tempId ? {
+                  ...response.data,
+                  key: response.data.uuid || `${response.data.sendAt}-${response.data.senderUuid}-${Math.random()}`
+                } : msg
+              )
+            );
+            messageDisplayed = true;
+          }
+        } catch (error) {
+          console.error('Error sending message via API:', error);
+          // Đánh dấu tin nhắn gửi thất bại
+          setMessages(prevMessages => 
+            prevMessages.map(msg => 
+              msg.uuid === tempId ? { ...msg, _failed: true, _sending: false } : msg
+            )
+          );
+        }
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error in send message flow:', error);
     } finally {
       setSending(false);
     }
@@ -197,13 +323,24 @@ export default function ConversationScreen() {
   // Hiển thị tin nhắn
   const renderMessage = ({ item }: { item: Message }) => {
     const isCurrentUser = item.senderUuid === student?.data.uuid;
+    const isTemporary = item.uuid?.startsWith('temp-');
+    const isSending = item._sending === true;
+    const hasFailed = item._failed === true;
     
     return (
       <View className={`max-w-3/4 my-1 px-3 py-2 rounded-2xl ${isCurrentUser ? 'self-end bg-blue-500' : 'self-start bg-gray-200'}`}>
         <Text className={`${isCurrentUser ? 'text-white' : 'text-gray-800'}`}>{item.content}</Text>
-        <Text className={`text-xs mt-1 ${isCurrentUser ? 'text-blue-100' : 'text-gray-500'}`}>
-          {new Date(item.sendAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
+        <View className="flex-row items-center justify-end mt-1">
+          <Text className={`text-xs ${isCurrentUser ? 'text-blue-100' : 'text-gray-500'}`}>
+            {new Date(item.sendAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+          {isSending && (
+            <ActivityIndicator size="small" color={isCurrentUser ? "#fff" : "#999"} style={{ marginLeft: 5 }} />
+          )}
+          {hasFailed && (
+            <Ionicons name="alert-circle" size={12} color={isCurrentUser ? "#ff9999" : "#ff6666"} style={{ marginLeft: 5 }} />
+          )}
+        </View>
       </View>
     );
   };
@@ -280,7 +417,7 @@ export default function ConversationScreen() {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={(item) =>  item.uuid || `${item.sendAt}-${item.senderUuid}`}
+            keyExtractor={(item) => item.key || item.uuid || `${item.sendAt}-${item.senderUuid}`}
             contentContainerStyle={{ padding: 10, flexGrow: 1 }}
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           />
@@ -298,8 +435,8 @@ export default function ConversationScreen() {
           />
           <Pressable 
             onPress={handleSendMessage}
-            disabled={!newMessage.trim() || sending}
-            className={`w-10 h-10 rounded-full justify-center items-center ${!newMessage.trim() || sending ? 'bg-gray-300' : 'bg-blue-500'}`}
+            disabled={sending}
+            className={`w-10 h-10 rounded-full justify-center items-center ${!newMessage.trim() ? 'bg-gray-300' : 'bg-blue-500'}`}
           >
             {sending ? (
               <ActivityIndicator size="small" color="#fff" />

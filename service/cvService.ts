@@ -1,3 +1,4 @@
+import { insertCVParams } from "@/types/cv";
 import api from "./api";
 export const getListCV = async (student_Uuid: string) => {
     try {
@@ -17,12 +18,21 @@ export const getCVDetail = async (uuid: string) => {
     }
 }
 
-export const insertCV = async (CV: any) => {
+export const insertCV = async (params: insertCVParams) => {
     try {
-        const response = await api.post("/CV/insert-cv", CV);
-        return response.data
-    }               
-    catch (error: any) {
-        throw error.response?.data?.message || "Insert CV failed"
+        // Make sure we're sending exactly what the API expects
+        const requestBody = {
+            studentUuid: params.studentUuid,
+            cloudinaryPublicId: params.cloudinaryPublicId,
+            url: params.url,
+            request: params.request || "CV upload" // Provide a default if not specified
+        };
+        
+        console.log("Sending to insert-cv API:", JSON.stringify(requestBody));
+        const response = await api.post("/CV/insert-cv", requestBody);
+        return response.data;
+    } catch (error: any) {
+        console.error("Insert CV error:", error.response?.data);
+        throw error.response?.data?.message || "Insert CV failed";
     }
-}
+};
