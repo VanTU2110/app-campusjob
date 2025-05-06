@@ -75,3 +75,15 @@ export interface Company {
       message: string;
     };
   }
+  export interface GetJobBySkillParams {
+    pageSize: number;
+    page: number;
+    skillUuid: string;
+  }
+  export interface GetJobByScheduleParams {
+    pageSize: number;
+    page: number;
+    dayofWeek: string;
+    startTime: string; // "HH:mm:ss"
+    endTime: string;   // "HH:mm:ss"
+  }

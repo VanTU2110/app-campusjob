@@ -61,11 +61,11 @@ export default function ConversationScreen() {
     const connectSignalR = async () => {
       try {
         setConnectionStatus('connecting');
-        console.log('Connecting to SignalR hub at: http://192.168.0.106:5109/chatHub');
+        console.log('Connecting to SignalR hub at: http://192.168.0.104:5109/chatHub');
         
         // Tạo kết nối SignalR - thay thế URL bằng URL thực tế của server SignalR
         const connection = new HubConnectionBuilder()
-          .withUrl('http://192.168.0.106:5109/chatHub', {
+          .withUrl('http://192.168.0.104:5109/chatHub', {
             skipNegotiation: true,
             transport: SignalR.HttpTransportType.WebSockets
           })
