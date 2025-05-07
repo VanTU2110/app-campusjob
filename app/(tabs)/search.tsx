@@ -1,5 +1,6 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,11 +14,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import JobCard from '../../components/JobCard';
-import { getListPageJob, getListPageJobBySkill, getListPageJobBySchedule } from '../../service/jobService';
+import { getListPageJob, getListPageJobBySchedule, getListPageJobBySkill } from '../../service/jobService';
 import { getSkillList } from '../../service/skillService';
-import { GetJobListParams, JobItem, GetJobBySkillParams, GetJobByScheduleParams, Skill } from '../../types/job';
+import { GetJobByScheduleParams, GetJobBySkillParams, GetJobListParams, JobItem, Skill } from '../../types/job';
 
 const JobSearchScreen = () => {
   // States for job listing and pagination
@@ -135,7 +135,7 @@ const JobSearchScreen = () => {
   };
 
   // Function to fetch jobs based on search type
-  const fetchJobs = async (page = 1, append = false) => {
+  const fetchJobs = useCallback(async (page = 1, append = false, currentSearchType = searchType) => {
     if (page === 1) {
       setLoading(true);
     } else {
@@ -145,7 +145,7 @@ const JobSearchScreen = () => {
     try {
       let response;
       
-      if (searchType === 'skill' && selectedSkill) {
+      if (currentSearchType === 'skill' && selectedSkill) {
         const params: GetJobBySkillParams = {
           pageSize: 10,
           page,
@@ -153,7 +153,7 @@ const JobSearchScreen = () => {
         };
         
         response = await getListPageJobBySkill(params);
-      } else if (searchType === 'schedule') {
+      } else if (currentSearchType === 'schedule') {
         const params: GetJobByScheduleParams = {
           pageSize: 10,
           page,
@@ -188,7 +188,7 @@ const JobSearchScreen = () => {
         setTotalPages(response.data.pagination.totalPage);
         
         // Update UI with active filters
-        updateActiveFiltersLabels();
+        updateActiveFiltersLabels(currentSearchType);
       } else {
         console.log('No data returned from API');
         setJobs([]);
@@ -205,15 +205,15 @@ const JobSearchScreen = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [searchType, selectedSkill, dayOfWeek, startTime, endTime, keyword, status, jobType, salaryType, salaryMin, salaryMax, salaryFixed]);
 
   // Update active filters labels for UI display
-  const updateActiveFiltersLabels = () => {
+  const updateActiveFiltersLabels = useCallback((currentSearchType = searchType) => {
     const filters: string[] = [];
     
-    if (searchType === 'skill' && selectedSkill) {
+    if (currentSearchType === 'skill' && selectedSkill) {
       filters.push(`Kỹ năng: ${selectedSkill.name}`);
-    } else if (searchType === 'schedule') {
+    } else if (currentSearchType === 'schedule') {
       const dayLabel = daysOfWeek.find(day => day.value === dayOfWeek)?.label;
       filters.push(`Lịch: ${dayLabel} (${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)})`);
     } else {
@@ -238,7 +238,7 @@ const JobSearchScreen = () => {
     }
     
     setActiveFilters(filters);
-  };
+  }, [searchType, selectedSkill, dayOfWeek, startTime, endTime, status, jobType, salaryType, salaryMin, salaryMax, salaryFixed, daysOfWeek, statusOptions, jobTypes, salaryTypes]);
 
   // Initial fetch
   useEffect(() => {
@@ -255,16 +255,17 @@ const JobSearchScreen = () => {
   // Apply filters
   const applyFilters = () => {
     setCurrentPage(1);
-    fetchJobs(1, false);
+    fetchJobs(1, false, 'regular');
     setShowFilters(false);
   };
 
   // Apply skill filter
   const applySkillFilter = () => {
     if (selectedSkill) {
-      setSearchType('skill');
       setCurrentPage(1);
-      fetchJobs(1, false);
+      // Pass 'skill' directly to fetchJobs instead of waiting for searchType state update
+      fetchJobs(1, false, 'skill');
+      setSearchType('skill');
       setShowSkillModal(false);
     } else {
       Alert.alert('Thông báo', 'Vui lòng chọn một kỹ năng');
@@ -273,9 +274,10 @@ const JobSearchScreen = () => {
 
   // Apply schedule filter
   const applyScheduleFilter = () => {
-    setSearchType('schedule');
     setCurrentPage(1);
-    fetchJobs(1, false);
+    // Pass 'schedule' directly to fetchJobs instead of waiting for searchType state update
+    fetchJobs(1, false, 'schedule');
+    setSearchType('schedule');
     setShowScheduleModal(false);
   };
 
@@ -337,8 +339,8 @@ const JobSearchScreen = () => {
             value={keyword}
             onChangeText={setKeyword}
             onSubmitEditing={() => {
+              fetchJobs(1, false, 'regular');
               setSearchType('regular');
-              fetchJobs(1);
             }}
           />
           {keyword.length > 0 && (
@@ -387,8 +389,7 @@ const JobSearchScreen = () => {
               className="bg-gray-100 px-3 py-2 rounded-lg flex-row items-center"
               onPress={() => {
                 resetFilters();
-                setSearchType('regular');
-                fetchJobs(1);
+                fetchJobs(1, false, 'regular');
               }}
             >
               <Feather name="x" size={16} color="#6B7280" />
@@ -507,10 +508,7 @@ const JobSearchScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity 
                 className="bg-blue-500 px-4 py-2 rounded-lg"
-                onPress={() => {
-                  setSearchType('regular');
-                  applyFilters();
-                }}
+                onPress={applyFilters}
               >
                 <Text className="text-white font-medium">Áp dụng</Text>
               </TouchableOpacity>
@@ -586,6 +584,7 @@ const JobSearchScreen = () => {
               <TouchableOpacity 
                 className="bg-blue-500 px-4 py-2 rounded-lg"
                 onPress={applySkillFilter}
+                disabled={selectedSkill === null}
               >
                 <Text className="text-white font-medium">Áp dụng</Text>
               </TouchableOpacity>
@@ -697,7 +696,6 @@ const JobSearchScreen = () => {
           </View>
         </View>
       </Modal>
-
       {/* Job List */}
       {loading ? (
         <View className="flex-1 justify-center items-center">

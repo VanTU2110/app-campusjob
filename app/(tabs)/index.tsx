@@ -1,22 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  SafeAreaView,
-  TextInput,
-  RefreshControl,
-  ActivityIndicator,
-  TouchableOpacity,
-  ScrollView 
-} from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { debounce } from 'lodash';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 // APIs và Types
 import { getListPageJob } from '../../service/jobService';
-import { JobItem, GetJobListParams } from '../../types/job';
+import { GetJobListParams, JobItem } from '../../types/job';
 
 // Components
 import JobCard from '../../components/JobCard';
@@ -42,31 +41,28 @@ const JobPage = () => {
   // Get student data from context
   const { student, loading: studentLoading } = useStudent();
   
+  // Refs for search timeout
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  
   // Lấy danh sách công việc
-  const fetchJobs = async (isRefresh = false) => {
+  const fetchJobs = async (params: GetJobListParams, isRefresh = false) => {
     try {
       if (isRefresh) {
         setLoading(true);
-        setFilters(prev => ({ ...prev, page: 1 }));
       }
-      
-      const params = {
-        ...filters,
-        keyword: searchQuery
-      };
       
       const response = await getListPageJob(params);
       
       if (response.data) {
         setTotalJobs(response.data.pagination.totalCount);
         
-        if (isRefresh || filters.page === 1) {
+        if (isRefresh || params.page === 1) {
           setJobs(response.data.items);
         } else {
           setJobs(prev => [...prev, ...response.data.items]);
         }
         
-        setHasMoreData(filters.page < response.data.pagination.totalPage);
+        setHasMoreData(params.page < response.data.pagination.totalPage);
       }
     } catch (error) {
       console.error('Lỗi khi lấy danh sách công việc:', error);
@@ -78,30 +74,49 @@ const JobPage = () => {
 
   // Gọi API lần đầu
   useEffect(() => {
-    fetchJobs();
+    fetchJobs(filters);
   }, []);
 
   // Xử lý tìm kiếm với debounce
-  const handleSearch = useCallback(
-    debounce((text: string) => {
-      setSearchQuery(text);
-      setFilters(prev => ({ ...prev, page: 1 }));
-      fetchJobs(true);
-    }, 500),
-    []
-  );
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    
+    // Clear previous timeout
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    
+    // Set new timeout
+    searchTimeout.current = setTimeout(() => {
+      const newFilters = { ...filters, keyword: text, page: 1 };
+      setFilters(newFilters);
+      fetchJobs(newFilters, true);
+    }, 500);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
 
   // Làm mới danh sách
   const onRefresh = () => {
     setRefreshing(true);
-    fetchJobs(true);
+    const newFilters = { ...filters, page: 1 };
+    setFilters(newFilters);
+    fetchJobs(newFilters, true);
   };
 
   // Tải thêm khi cuộn đến cuối
   const handleLoadMore = () => {
     if (!loading && hasMoreData) {
-      setFilters(prev => ({ ...prev, page: prev.page + 1 }));
-      fetchJobs();
+      const newFilters = { ...filters, page: filters.page + 1 };
+      setFilters(newFilters);
+      fetchJobs(newFilters);
     }
   };
 
@@ -123,10 +138,37 @@ const JobPage = () => {
     router.push('/conversations');
   };
 
-  // Áp dụng bộ lọc
-  const applyFilters = () => {
-    setFilters(prev => ({ ...prev, page: 1 }));
-    fetchJobs(true);
+  // Xử lý bộ lọc JobType
+  const handleJobTypeFilter = (type: string) => {
+    const newFilters = {
+      ...filters,
+      page: 1,
+      jobType: filters.jobType === type ? undefined : type
+    };
+    setFilters(newFilters);
+    fetchJobs(newFilters, true);
+  };
+
+  // Xử lý bộ lọc SalaryType
+  const handleSalaryTypeFilter = (type: string) => {
+    const newFilters = {
+      ...filters,
+      page: 1,
+      salaryType: filters.salaryType === type ? undefined : type
+    };
+    setFilters(newFilters);
+    fetchJobs(newFilters, true);
+  };
+
+  // Reset tất cả bộ lọc
+  const resetFilters = () => {
+    const newFilters = {
+      pageSize: 10,
+      page: 1,
+    };
+    setFilters(newFilters);
+    setSearchQuery('');
+    fetchJobs(newFilters, true);
   };
 
   // Component hiển thị khi không có dữ liệu
@@ -137,7 +179,7 @@ const JobPage = () => {
       <Text className="text-center text-gray-400 mt-1">Hãy thử điều chỉnh tiêu chí tìm kiếm</Text>
       <TouchableOpacity 
         className="mt-6 bg-blue-600 px-6 py-3 rounded-full"
-        onPress={onRefresh}
+        onPress={resetFilters}
       >
         <Text className="text-white font-medium">Đặt lại bộ lọc</Text>
       </TouchableOpacity>
@@ -146,7 +188,7 @@ const JobPage = () => {
 
   // Component hiển thị ở footer
   const FooterComponent = () => {
-    if (!loading) return null;
+    if (!loading || jobs.length === 0) return null;
     
     return (
       <View className="py-4 items-center">
@@ -186,13 +228,7 @@ const JobPage = () => {
             <TouchableOpacity
               key={type}
               className={`mr-2 px-3 py-2 rounded-full ${filters.jobType === type ? 'bg-blue-500' : 'bg-gray-100'}`}
-              onPress={() => {
-                setFilters(prev => ({
-                  ...prev, 
-                  jobType: prev.jobType === type ? undefined : type
-                }));
-                applyFilters();
-              }}
+              onPress={() => handleJobTypeFilter(type)}
             >
               <Text 
                 className={`text-sm ${filters.jobType === type ? 'text-white' : 'text-gray-700'}`}
@@ -207,13 +243,7 @@ const JobPage = () => {
             <TouchableOpacity
               key={type}
               className={`mr-2 px-3 py-2 rounded-full ${filters.salaryType === type ? 'bg-green-500' : 'bg-gray-100'}`}
-              onPress={() => {
-                setFilters(prev => ({
-                  ...prev, 
-                  salaryType: prev.salaryType === type ? undefined : type
-                }));
-                applyFilters();
-              }}
+              onPress={() => handleSalaryTypeFilter(type)}
             >
               <Text 
                 className={`text-sm ${filters.salaryType === type ? 'text-white' : 'text-gray-700'}`}
@@ -284,6 +314,49 @@ const JobPage = () => {
             <Feather name="filter" size={14} color="#2563EB" />
           </TouchableOpacity>
         </View>
+        
+        {/* Các bộ lọc đang hoạt động */}
+        {(filters.jobType || filters.salaryType || searchQuery) && (
+          <View className="flex-row flex-wrap mb-2">
+            {filters.jobType && (
+              <View className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center">
+                <Text className="text-blue-800 text-xs mr-1">
+                  {filters.jobType === 'remote' ? 'Từ xa' : 
+                   filters.jobType === 'parttime' ? 'Bán thời gian' : 
+                   filters.jobType === 'internship' ? 'Thực tập' : 'Toàn thời gian'}
+                </Text>
+                <TouchableOpacity onPress={() => handleJobTypeFilter(filters.jobType as string)}>
+                  <Feather name="x" size={14} color="#2563EB" />
+                </TouchableOpacity>
+              </View>
+            )}
+            
+            {filters.salaryType && (
+              <View className="bg-green-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center">
+                <Text className="text-green-800 text-xs mr-1">
+                  {filters.salaryType === 'fixed' ? 'Lương cố định' : 
+                   filters.salaryType === 'monthly' ? 'Lương theo tháng' : 
+                   filters.salaryType === 'daily' ? 'Lương theo ngày' : 'Lương theo giờ'}
+                </Text>
+                <TouchableOpacity onPress={() => handleSalaryTypeFilter(filters.salaryType as string)}>
+                  <Feather name="x" size={14} color="#22C55E" />
+                </TouchableOpacity>
+              </View>
+            )}
+            
+            {searchQuery && (
+              <View className="bg-gray-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center">
+                <Text className="text-gray-800 text-xs mr-1">Tìm: {searchQuery}</Text>
+                <TouchableOpacity onPress={() => {
+                  setSearchQuery('');
+                  handleSearch('');
+                }}>
+                  <Feather name="x" size={14} color="#4B5563" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
         
         {/* Danh sách công việc */}
         {loading && jobs.length === 0 ? (

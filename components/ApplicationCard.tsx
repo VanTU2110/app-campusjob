@@ -104,14 +104,6 @@ const ApplicationCard = ({ application, onPress }: ApplicationCardProps) => {
         </View>
       )}
       
-      {application.note && (
-        <View className="mt-2 bg-gray-50 p-2 rounded">
-          <Text className="text-sm text-gray-700" numberOfLines={2}>
-            <Text className="font-medium">Note:</Text> {application.note}
-          </Text>
-        </View>
-      )}
-      
       <View className="flex-row mt-3 items-center justify-end">
         <Text className="text-indigo-600 text-sm font-medium mr-1">
           View Job Details
