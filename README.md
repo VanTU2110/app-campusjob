@@ -1,50 +1,71 @@
-# Welcome to your Expo app 👋
+# 📱 Ứng dụng Tìm Việc Làm Thêm Cho Sinh Viên (Mobile - Expo)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Ứng dụng mobile giúp sinh viên tìm kiếm công việc bán thời gian phù hợp với thời gian rảnh và kỹ năng của bản thân. Được xây dựng bằng React Native (Expo SDK 53) và sử dụng NativeWind để tối ưu giao diện.
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Công nghệ sử dụng
 
-   ```bash
-   npm install
-   ```
+- ⚛️ React Native (Expo SDK 53)
+- 💨 NativeWind (Tailwind CSS cho React Native)
+- ⛑️ TypeScript
+- 🧭 Expo Router v3
+- 📦 Axios
+- 🔐 Context API (xử lý đăng nhập)
+- 📱 AsyncStorage (lưu token)
+- 🔔 Pusher / Socket (nếu có real-time)
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## 🧩 Tính năng chính
 
-In the output, you'll find options to open the app in a
+- Đăng ký, đăng nhập
+- Cập nhật hồ sơ sinh viên (họ tên, ngày sinh, trường, kỹ năng...)
+- Tìm kiếm và xem chi tiết công việc
+- Ứng tuyển công việc
+- Quản lý danh sách ứng tuyển
+- Nhận thông báo trạng thái ứng tuyển (nếu có)
+- Điều hướng mượt mà với Expo Router
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 🗂️ Cấu trúc thư mục chính
 
-## Get a fresh project
+/app
+├── (auth) # Màn hình đăng nhập, đăng ký
+├── (home) # Màn hình chính, danh sách việc làm
+├── (profile) # Hồ sơ sinh viên
+├── _layout.tsx # Cấu hình Expo Router
+/components # Các component dùng chung
+/constants # Hằng số, màu sắc, font
+/context/AuthContext.tsx# Context xử lý đăng nhập
+/services/api.ts # Cấu hình Axios
+/types # TypeScript types
 
-When you're ready, run:
+---
+
+## 🛠️ Cài đặt và chạy ứng dụng
+
+### Yêu cầu:
+- Node.js >= 18
+- Expo CLI
+- Cài Expo Go (trên điện thoại) hoặc dùng Android/iOS simulator
+
+### Các bước cài đặt:
 
 ```bash
-npm run reset-project
-```
+git clone https://github.com/your-username/your-project.git
+cd your-project
+npm install
+npx expo start
+📱 Sau đó quét QR bằng ứng dụng Expo Go trên điện thoại.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+🧪 Môi trường phát triển
+✅ Đã kiểm thử trên IOS
 
-## Learn more
+👨‍🎓 Sinh viên thực hiện
+Họ tên: Phạm Văn Tú
 
-To learn more about developing your project with Expo, look at the following resources:
+Mã số sinh viên: 10121943
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Lớp: 125215
