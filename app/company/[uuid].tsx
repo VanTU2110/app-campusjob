@@ -13,6 +13,8 @@ import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { getCompanyDetail } from '../../service/companyService';
 import { CompanyDetail } from '@/types/company';
+import { createConversation } from '../../service/conversationService';
+import { useStudent } from '../../contexts/StudentContext';
 
 const CompanyDetailScreen = () => {
   const { uuid } = useLocalSearchParams<{ uuid: string }>();
@@ -20,6 +22,9 @@ const CompanyDetailScreen = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+
+   const { student, loading: studentLoading } = useStudent();// Get student data from context
   const router = useRouter();
 
   const fetchCompanyDetail = async () => {
@@ -60,7 +65,30 @@ const CompanyDetailScreen = () => {
       Linking.openURL(`tel:${company.phoneNumber}`);
     }
   };
-
+  const handleCreateConversation = async () => {
+    if (!student?.data.uuid || !company?.uuid) return;
+  
+    try {
+      setIsCreatingConversation(true);
+  
+      const response = await createConversation({
+        studentUuid: student.data.uuid,
+        companyUuid: company.uuid,
+      });
+  
+      if (response.data) {
+        router.push(`/conversations/${response.data.uuid}`);
+      } else {
+        alert(response.error?.message || 'Không thể tạo cuộc trò chuyện');
+      }
+    } catch (error) {
+      alert('Đã xảy ra lỗi khi tạo cuộc trò chuyện');
+      console.error(error);
+    } finally {
+      setIsCreatingConversation(false);
+    }
+  };
+  
   const handleSendEmail = () => {
     if (company?.email) {
       Linking.openURL(`mailto:${company.email}`);
@@ -141,6 +169,19 @@ const CompanyDetailScreen = () => {
           </View>
         </View>
       </View>
+      <View className="bg-white px-6 py-4 mb-4 shadow-sm">
+  <TouchableOpacity 
+    className={`bg-blue-500 rounded-full py-3 items-center flex-row justify-center ${isCreatingConversation ? 'opacity-50' : ''}`}
+    onPress={handleCreateConversation}
+    disabled={isCreatingConversation}
+  >
+    {isCreatingConversation ? (
+      <ActivityIndicator size="small" color="#fff" />
+    ) : (
+      <Text className="text-white font-medium text-base">Nhắn tin</Text>
+    )}
+  </TouchableOpacity>
+</View>
 
       {/* Contact Info */}
       <View className="bg-white p-6 mb-4 shadow-sm">

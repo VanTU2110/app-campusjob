@@ -1,31 +1,30 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
-  ActivityIndicator,
-  Share,
-  Linking,
-  RefreshControl,
-  Animated,
-  Modal,
-  TextInput,
-  Alert,
-  KeyboardAvoidingView,
-  Platform
-} from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { detailJob, getListPageJob } from '../../service/jobService';
-import { JobItem, JobDetailResponse, JobListResponse } from '../../types/job';
-import JobSuggestion from '../../components/JobSuggestion';
-import { StatusBar } from 'expo-status-bar';
-import { ApplyJob } from '../../types/apply';
-import { applyJob } from '@/service/applyService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStudent } from '@/contexts/StudentContext';
+import { applyJob } from '@/service/applyService';
+import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  RefreshControl,
+  Share,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import JobSuggestion from '../../components/JobSuggestion';
+import { detailJob, getListPageJob } from '../../service/jobService';
+import { ApplyJob } from '../../types/apply';
+import { JobDetailResponse, JobItem, JobListResponse } from '../../types/job';
 
 const JobDetail = () => {
   const { uuid } = useLocalSearchParams();
