@@ -38,3 +38,14 @@ export interface GetApplyJobResponse {
         message: string;
     };
 }
+export interface CheckApplyParams {
+    studentUuid: string;
+    jobUuid: string;
+}
+export interface CheckApplyResponse {
+    data: boolean;
+    error: {
+        code: string;
+        message: string;
+    };
+}

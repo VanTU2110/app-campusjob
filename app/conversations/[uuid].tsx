@@ -64,7 +64,7 @@ export default function ConversationScreen() {
         
         // Tạo kết nối SignalR - thay thế URL bằng URL thực tế của server SignalR
         const connection = new HubConnectionBuilder()
-          .withUrl('http://192.168.0.102:5109/chatHub', {
+          .withUrl('http://192.168.0.108:5109/chatHub', {
             skipNegotiation: true,
             transport: SignalR.HttpTransportType.WebSockets
           })

@@ -1,7 +1,6 @@
 import { useStudent } from '@/contexts/StudentContext';
-import { applyJob } from '@/service/applyService';
+import { applyJob, checkApply } from '@/service/applyService';
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -23,7 +22,7 @@ import {
 } from 'react-native';
 import JobSuggestion from '../../components/JobSuggestion';
 import { detailJob, getListPageJob } from '../../service/jobService';
-import { ApplyJob } from '../../types/apply';
+import { ApplyJob, CheckApplyParams, CheckApplyResponse } from '../../types/apply';
 import { JobDetailResponse, JobItem, JobListResponse } from '../../types/job';
 
 const JobDetail = () => {
@@ -42,32 +41,39 @@ const JobDetail = () => {
   const [coverLetter, setCoverLetter] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
   const [isAlreadyApplied, setIsAlreadyApplied] = useState(false);
+  const [checkingApplyStatus, setCheckingApplyStatus] = useState(false);
   
   // Get student data from context
   const { student, loading: studentLoading } = useStudent();
 
   // Check if student has already applied for this job
   useEffect(() => {
-    const checkIfAlreadyApplied = async (jobUuid: string) => {
-      try {
-        // You would implement a service function to check application status
-        // For now using AsyncStorage as an example
-        const appliedJobs = await AsyncStorage.getItem('appliedJobs');
-        if (appliedJobs) {
-          const jobList = JSON.parse(appliedJobs);
-          if (jobList.includes(jobUuid)) {
-            setIsAlreadyApplied(true);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking application status:', error);
-      }
-    };
-    
-    if (uuid && typeof uuid === 'string') {
-      checkIfAlreadyApplied(uuid as string);
+    if (student?.data?.uuid && uuid && typeof uuid === 'string') {
+      checkIfAlreadyApplied(student.data.uuid, uuid);
     }
-  }, [uuid]);
+  }, [uuid, student]);
+
+  const checkIfAlreadyApplied = async (studentUuid: string, jobUuid: string) => {
+    try {
+      setCheckingApplyStatus(true);
+      const params: CheckApplyParams = {
+        studentUuid: studentUuid,
+        jobUuid: jobUuid
+      };
+      
+      const response: CheckApplyResponse = await checkApply(params);
+      
+      if (response.data === true) {
+        setIsAlreadyApplied(true);
+      } else {
+        setIsAlreadyApplied(false);
+      }
+    } catch (error) {
+      console.error('Error checking application status:', error);
+    } finally {
+      setCheckingApplyStatus(false);
+    }
+  };
 
   const fetchJobDetails = useCallback(async () => {
     try {
@@ -81,8 +87,10 @@ const JobDetail = () => {
       if (response.data) {
         setJob(response.data);
         
-        // Check if already applied for this job
-        checkIfAlreadyApplied(response.data.uuid);
+        // Check if already applied for this job (will be done in useEffect now)
+        // if (student?.data?.uuid) {
+        //   checkIfAlreadyApplied(student.data.uuid, response.data.uuid);
+        // }
         
         // Fetch similar jobs based on skills or job type
         if (response.data.listSkill && response.data.listSkill.length > 0) {
@@ -110,20 +118,6 @@ const JobDetail = () => {
     }
   }, [uuid]);
   
-  const checkIfAlreadyApplied = async (jobUuid: string) => {
-    try {
-      const appliedJobs = await AsyncStorage.getItem('appliedJobs');
-      if (appliedJobs) {
-        const jobList = JSON.parse(appliedJobs);
-        if (jobList.includes(jobUuid)) {
-          setIsAlreadyApplied(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking application status:', error);
-    }
-  };
-  
   useEffect(() => {
     fetchJobDetails();
   }, [fetchJobDetails]);
@@ -131,7 +125,10 @@ const JobDetail = () => {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchJobDetails();
-  }, [fetchJobDetails]);
+    if (student?.data?.uuid && uuid && typeof uuid === 'string') {
+      checkIfAlreadyApplied(student.data.uuid, uuid as string);
+    }
+  }, [fetchJobDetails, student, uuid]);
 
   // Handle Apply Job functionality
   const handleApplyPress = () => {
@@ -182,16 +179,7 @@ const JobDetail = () => {
       
       const response = await applyJob(applyData);
       
-      // Mark job as applied in local storage
-      try {
-        const appliedJobs = await AsyncStorage.getItem('appliedJobs');
-        const jobList = appliedJobs ? JSON.parse(appliedJobs) : [];
-        jobList.push(job.uuid);
-        await AsyncStorage.setItem('appliedJobs', JSON.stringify(jobList));
-      } catch (error) {
-        console.error('Error saving applied job status:', error);
-      }
-      
+      // Update the apply status using our service instead of AsyncStorage
       setIsAlreadyApplied(true);
       setModalVisible(false);
       setCoverLetter('');
@@ -234,12 +222,7 @@ const JobDetail = () => {
     }
   };
 
-  const handleContactCompany = () => {
-    if (job && job.company.email) {
-      Linking.openURL(`mailto:${job.company.email}?subject=Ứng tuyển: ${job.title}`);
-    }
-  };
-
+  
   // Format salary based on type
   const formatSalary = (job: JobItem) => {
     const { salaryType, salaryMin, salaryMax, salaryFixed, currency } = job;
@@ -293,14 +276,6 @@ const JobDetail = () => {
     return date.toLocaleDateString('vi-VN');
   };
 
-  // Calculate experience level
-  const getExperienceLevel = (job: JobItem) => {
-    if (!job.experienceYears) return 'Không yêu cầu kinh nghiệm';
-    if (job.experienceYears < 1) return 'Mới đi làm';
-    if (job.experienceYears < 3) return 'Kinh nghiệm ít';
-    if (job.experienceYears < 5) return 'Kinh nghiệm trung bình';
-    return 'Nhiều kinh nghiệm';
-  };
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 150],
@@ -417,19 +392,9 @@ const JobDetail = () => {
                 <Text className="ml-2 text-sm text-blue-700 font-medium">{formattedJobType.label}</Text>
               </View>
               
-              <View className="bg-blue-100 rounded-full py-1.5 px-4 m-1 flex-row items-center">
-                <Ionicons name="location-outline" size={16} color="#3b82f6" />
-                <Text className="ml-1 text-sm text-blue-700 font-medium">{job.location || 'Flexible'}</Text>
-              </View>
               
-              {job.experienceYears !== undefined && (
-                <View className="bg-blue-100 rounded-full py-1.5 px-4 m-1 flex-row items-center">
-                  <MaterialCommunityIcons name="account-clock-outline" size={16} color="#3b82f6" />
-                  <Text className="ml-1 text-sm text-blue-700 font-medium">
-                    {job.experienceYears} năm
-                  </Text>
-                </View>
-              )}
+              
+              
             </View>
           </View>
         </View>
@@ -471,23 +436,9 @@ const JobDetail = () => {
                 <Text className="ml-2 text-base text-gray-700">Đăng ngày: {formatDate(job.created)}</Text>
               </View>
               
-              <TouchableOpacity 
-                onPress={handleContactCompany}
-                className="flex-row items-center bg-blue-50 py-1 px-3 rounded-full"
-              >
-                <Ionicons name="mail-outline" size={16} color="#3b82f6" />
-                <Text className="ml-1 text-sm text-blue-600">Liên hệ</Text>
-              </TouchableOpacity>
+          
             </View>
             
-            {job.deadline && (
-              <View className="flex-row items-center">
-                <Ionicons name="calendar-outline" size={20} color={new Date(job.deadline) < new Date() ? "#ef4444" : "#3b82f6"} />
-                <Text className={`ml-2 text-base ${new Date(job.deadline) < new Date() ? "text-red-600" : "text-gray-700"}`}>
-                  Hạn nộp: {formatDate(job.deadline)}
-                </Text>
-              </View>
-            )}
           </View>
         </View>
         
@@ -569,19 +520,7 @@ const JobDetail = () => {
           </View>
         )}
         
-        {/* Additional benefits if available */}
-        {job.benefits && (
-          <View className="mx-4 mb-4 bg-white rounded-xl shadow-sm overflow-hidden">
-            <View className="p-4 border-b border-gray-200">
-              <Text className="text-lg font-bold text-gray-800">Phúc lợi</Text>
-            </View>
-            <View className="p-4">
-              <Text className="text-base leading-6 text-gray-700">{job.benefits}</Text>
-            </View>
-          </View>
-        )}
         
-        {/* Company info card */}
         {/* Company info card */}
         <TouchableOpacity 
           className="mx-4 mb-4 bg-white rounded-xl shadow-sm overflow-hidden"
@@ -609,17 +548,11 @@ const JobDetail = () => {
               </View>
               <View>
                 <Text className="text-lg font-bold text-gray-800">{job.company.name}</Text>
-                {job.company.industry && (
-                  <Text className="text-sm text-gray-600">{job.company.industry}</Text>
-                )}
+                
               </View>
             </View>
             
-            {job.company.description && (
-              <Text className="text-base text-gray-700 mb-4" numberOfLines={2} ellipsizeMode="tail">
-                {job.company.description}
-              </Text>
-            )}
+            
             
             <View className="flex-row items-center mt-2">
               <View className="h-10 w-10 rounded-full bg-blue-50 items-center justify-center mr-2">
