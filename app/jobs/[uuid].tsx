@@ -24,6 +24,7 @@ import JobSuggestion from '../../components/JobSuggestion';
 import { detailJob, getListPageJob } from '../../service/jobService';
 import { ApplyJob, CheckApplyParams, CheckApplyResponse } from '../../types/apply';
 import { JobDetailResponse, JobItem, JobListResponse } from '../../types/job';
+import ReportForm from '@/components/ReportForm';
 
 const JobDetail = () => {
   const { uuid } = useLocalSearchParams();
@@ -35,16 +36,20 @@ const JobDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const scrollY = new Animated.Value(0);
-  
+
   // Apply Job Modal States
   const [modalVisible, setModalVisible] = useState(false);
   const [coverLetter, setCoverLetter] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
   const [isAlreadyApplied, setIsAlreadyApplied] = useState(false);
   const [checkingApplyStatus, setCheckingApplyStatus] = useState(false);
-  
+
   // Get student data from context
   const { student, loading: studentLoading } = useStudent();
+
+  //Report Form
+  const [showReportModal, setShowReportModal] = useState(false);
+
 
   // Check if student has already applied for this job
   useEffect(() => {
@@ -60,9 +65,9 @@ const JobDetail = () => {
         studentUuid: studentUuid,
         jobUuid: jobUuid
       };
-      
+
       const response: CheckApplyResponse = await checkApply(params);
-      
+
       if (response.data === true) {
         setIsAlreadyApplied(true);
       } else {
@@ -80,29 +85,20 @@ const JobDetail = () => {
       if (!uuid || typeof uuid !== 'string') {
         throw new Error('Invalid job UUID');
       }
-      
       setLoading(true);
       // Fetch job details
       const response: JobDetailResponse = await detailJob(uuid);
       if (response.data) {
         setJob(response.data);
-        
-        // Check if already applied for this job (will be done in useEffect now)
-        // if (student?.data?.uuid) {
-        //   checkIfAlreadyApplied(student.data.uuid, response.data.uuid);
-        // }
-        
-        // Fetch similar jobs based on skills or job type
         if (response.data.listSkill && response.data.listSkill.length > 0) {
           const skillNames = response.data.listSkill.map(js => js.skill.name).join(' ');
-          
           const similarJobsResponse: JobListResponse = await getListPageJob({
             page: 1,
             pageSize: 5,
             keyword: skillNames,
             jobType: response.data.jobType
           });
-          
+
           if (similarJobsResponse.data && similarJobsResponse.data.items) {
             setSimilarJobs(similarJobsResponse.data.items.filter(item => item.uuid !== uuid));
           }
@@ -117,11 +113,11 @@ const JobDetail = () => {
       setRefreshing(false);
     }
   }, [uuid]);
-  
+
   useEffect(() => {
     fetchJobDetails();
   }, [fetchJobDetails]);
-  
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchJobDetails();
@@ -144,7 +140,7 @@ const JobDetail = () => {
       );
       return;
     }
-    
+
     if (isAlreadyApplied) {
       Alert.alert(
         "Đã ứng tuyển",
@@ -153,44 +149,44 @@ const JobDetail = () => {
       );
       return;
     }
-    
+
     // Show application modal
     setModalVisible(true);
   };
-  
+
   // Submit job application
   const handleSubmitApplication = async () => {
     if (!job || !student || !student.data) return;
-    
+
     // Validate input
     if (!coverLetter.trim()) {
       Alert.alert("Lỗi", "Vui lòng nhập thư xin việc");
       return;
     }
-    
+
     try {
       setApplyLoading(true);
-      
+
       const applyData: ApplyJob = {
         studentUuid: student.data.uuid, // Use studentUuid from context
         jobUuid: job.uuid,
         coverLetter: coverLetter
       };
-      
+
       const response = await applyJob(applyData);
-      
+
       // Update the apply status using our service instead of AsyncStorage
       setIsAlreadyApplied(true);
       setModalVisible(false);
       setCoverLetter('');
-      
+
       // Show success message
       Alert.alert(
         "Ứng tuyển thành công",
         "Đơn ứng tuyển của bạn đã được gửi đi. Nhà tuyển dụng sẽ sớm liên hệ với bạn.",
         [{ text: "Đóng", style: "default" }]
       );
-      
+
     } catch (error) {
       console.error('Error applying for job:', error);
       Alert.alert(
@@ -202,13 +198,13 @@ const JobDetail = () => {
       setApplyLoading(false);
     }
   };
-  
+
   const handleSaveJob = () => {
     setIsSaved(!isSaved);
     // Hiệu ứng phản hồi khi người dùng lưu công việc
     // Implement actual save logic here
   };
-  
+
   const handleShareJob = async () => {
     if (job) {
       try {
@@ -222,11 +218,11 @@ const JobDetail = () => {
     }
   };
 
-  
+
   // Format salary based on type
   const formatSalary = (job: JobItem) => {
     const { salaryType, salaryMin, salaryMax, salaryFixed, currency } = job;
-    
+
     if (salaryType === 'fixed' && salaryFixed) {
       return `${salaryFixed.toLocaleString()} ${currency}`;
     } else if (salaryType === 'monthly' || salaryType === 'daily' || salaryType === 'hourly') {
@@ -269,7 +265,7 @@ const JobDetail = () => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays <= 7) {
       return `${diffDays} ngày trước`;
     }
@@ -282,7 +278,7 @@ const JobDetail = () => {
     outputRange: [0, 1],
     extrapolate: 'clamp'
   });
-  
+
   if (loading && !refreshing) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50">
@@ -291,14 +287,14 @@ const JobDetail = () => {
       </View>
     );
   }
-  
+
   // Check if job data is not available or error is present
   if (!job || error) {
     return (
       <View className="flex-1 justify-center items-center p-5 bg-gray-50">
         <Ionicons name="alert-circle-outline" size={60} color="#ef4444" />
         <Text className="text-lg text-red-600 my-5 text-center">{error || 'Không tìm thấy công việc'}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           className="py-3 px-6 bg-blue-500 rounded-lg"
           onPress={() => router.back()}
         >
@@ -307,13 +303,13 @@ const JobDetail = () => {
       </View>
     );
   }
-  
+
   const formattedJobType = formatJobType(job.jobType);
-  
+
   return (
     <>
       <StatusBar style="light" />
-      <Stack.Screen 
+      <Stack.Screen
         options={{
           headerStyle: {
             backgroundColor: '#3b82f6',
@@ -326,30 +322,37 @@ const JobDetail = () => {
           ),
           headerRight: () => (
             <View className="flex-row">
-              <TouchableOpacity 
-                className="p-2 ml-1 rounded-full" 
+              <TouchableOpacity
+                className="p-2 ml-1 rounded-full"
                 onPress={handleSaveJob}
                 style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
               >
-                <Ionicons 
-                  name={isSaved ? "bookmark" : "bookmark-outline"} 
-                  size={22} 
+                <Ionicons
+                  name={isSaved ? "bookmark" : "bookmark-outline"}
+                  size={22}
                   color="#ffffff"
                 />
               </TouchableOpacity>
-              <TouchableOpacity 
-                className="p-2 ml-1 rounded-full" 
+              <TouchableOpacity
+                className="p-2 ml-1 rounded-full"
                 onPress={handleShareJob}
                 style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
               >
                 <Ionicons name="share-outline" size={22} color="#ffffff" />
               </TouchableOpacity>
+              <TouchableOpacity
+  className="p-2 ml-1 rounded-full"
+  onPress={() => setShowReportModal(true)}
+  style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+>
+  <Ionicons name="flag-outline" size={22} color="#ffffff" />
+</TouchableOpacity>
             </View>
           ),
         }}
       />
-      
-      <Animated.ScrollView 
+
+      <Animated.ScrollView
         className="flex-1 bg-gray-100"
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
@@ -372,8 +375,8 @@ const JobDetail = () => {
             {/* Company logo circle with border */}
             <View className="w-20 h-20 rounded-full bg-white shadow justify-center items-center mb-4 self-center border-2 border-blue-100">
               {job.company.logo ? (
-                <Image 
-                  source={{ uri: job.company.logo }} 
+                <Image
+                  source={{ uri: job.company.logo }}
                   className="w-full h-full rounded-full"
                   resizeMode="cover"
                 />
@@ -381,24 +384,21 @@ const JobDetail = () => {
                 <Text className="text-3xl font-bold text-blue-600">{job.company.name.charAt(0)}</Text>
               )}
             </View>
-            
+
             <Text className="text-2xl font-bold text-center text-white mb-2">{job.title}</Text>
             <Text className="text-base text-blue-100 text-center mb-6">{job.company.name}</Text>
-            
+
             {/* Chips section with key info */}
             <View className="flex-row flex-wrap justify-center mb-4">
               <View className="bg-blue-100 rounded-full py-1.5 px-4 m-1 flex-row items-center">
                 <FontAwesome5 name={formattedJobType.icon} size={14} color="#3b82f6" />
                 <Text className="ml-2 text-sm text-blue-700 font-medium">{formattedJobType.label}</Text>
               </View>
-              
-              
-              
-              
+
             </View>
           </View>
         </View>
-        
+
         {/* SALARY BANNER - Rõ ràng và nổi bật hơn */}
         <View className="mx-4 -mt-6 mb-4">
           <View className="bg-yellow-500 rounded-xl shadow-lg overflow-hidden border-2 border-yellow-400">
@@ -408,25 +408,24 @@ const JobDetail = () => {
                   <Ionicons name="cash-outline" size={28} color="#ffffff" />
                   <Text className="text-lg text-white font-bold ml-2">MỨC LƯƠNG</Text>
                 </View>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   className="bg-white bg-opacity-20 rounded-full p-1"
                   onPress={() => {
-                    // Thêm hành động khi click vào biểu tượng info
-                    // Ví dụ: hiển thị modal giải thích về lương
+
                   }}
                 >
                   <Ionicons name="information-circle-outline" size={20} color="#ffffff" />
                 </TouchableOpacity>
               </View>
-              
+
               <Text className="text-2xl font-extrabold text-white mt-2 text-center">
                 {formatSalary(job)}
               </Text>
             </View>
           </View>
         </View>
-        
+
         {/* Job meta info card */}
         <View className="mx-4 mb-4 bg-white rounded-xl shadow-sm overflow-hidden">
           <View className="p-4">
@@ -435,13 +434,13 @@ const JobDetail = () => {
                 <Ionicons name="time-outline" size={20} color="#3b82f6" />
                 <Text className="ml-2 text-base text-gray-700">Đăng ngày: {formatDate(job.created)}</Text>
               </View>
-              
-          
+
+
             </View>
-            
+
           </View>
         </View>
-        
+
         {/* Job skills */}
         {job.listSkill && job.listSkill.length > 0 && (
           <View className="mx-4 mb-4 bg-white rounded-xl shadow-sm">
@@ -459,7 +458,7 @@ const JobDetail = () => {
             </View>
           </View>
         )}
-        
+
         {/* Job description with styled content */}
         <View className="mx-4 mb-4 bg-white rounded-xl shadow-sm overflow-hidden">
           <View className="p-4 border-b border-gray-200">
@@ -469,7 +468,7 @@ const JobDetail = () => {
             <Text className="text-base leading-6 text-gray-700">{job.description}</Text>
           </View>
         </View>
-        
+
         {/* Job requirements with styled content */}
         {job.requirements && (
           <View className="mx-4 mb-4 bg-white rounded-xl shadow-sm overflow-hidden">
@@ -481,7 +480,7 @@ const JobDetail = () => {
             </View>
           </View>
         )}
-        
+
         {/* Job schedule with styled content */}
         {job.schedule && job.schedule.length > 0 && (
           <View className="mx-4 mb-4 bg-white rounded-xl shadow-sm overflow-hidden">
@@ -491,7 +490,7 @@ const JobDetail = () => {
             <View className="p-4">
               {job.schedule.map((schedule, index) => {
                 // Translate day of week to Vietnamese
-                const dayTranslation: {[key: string]: string} = {
+                const dayTranslation: { [key: string]: string } = {
                   'Monday': 'Thứ Hai',
                   'Tuesday': 'Thứ Ba',
                   'Wednesday': 'Thứ Tư',
@@ -501,7 +500,7 @@ const JobDetail = () => {
                   'Sunday': 'Chủ Nhật'
                 };
                 const day = dayTranslation[schedule.dayOfWeek] || schedule.dayOfWeek;
-                
+
                 return (
                   <View key={schedule.uuid || index} className="flex-row mb-3 items-center">
                     <View className="w-9 h-9 rounded-full bg-blue-100 justify-center items-center mr-3">
@@ -519,13 +518,13 @@ const JobDetail = () => {
             </View>
           </View>
         )}
-        
-        
+
+
         {/* Company info card */}
-        <TouchableOpacity 
+        <TouchableOpacity
           className="mx-4 mb-4 bg-white rounded-xl shadow-sm overflow-hidden"
           onPress={() => router.push({
-            pathname:'/company/[uuid]',
+            pathname: '/company/[uuid]',
             params: { uuid: job.company.uuid }
           })}
         >
@@ -537,8 +536,8 @@ const JobDetail = () => {
             <View className="flex-row items-center mb-4">
               <View className="w-12 h-12 rounded-full bg-gray-200 justify-center items-center mr-3">
                 {job.company.logo ? (
-                  <Image 
-                    source={{ uri: job.company.logo }} 
+                  <Image
+                    source={{ uri: job.company.logo }}
                     className="w-full h-full rounded-full"
                     resizeMode="cover"
                   />
@@ -548,12 +547,12 @@ const JobDetail = () => {
               </View>
               <View>
                 <Text className="text-lg font-bold text-gray-800">{job.company.name}</Text>
-                
+
               </View>
             </View>
-            
-            
-            
+
+
+
             <View className="flex-row items-center mt-2">
               <View className="h-10 w-10 rounded-full bg-blue-50 items-center justify-center mr-2">
                 <Ionicons name="business-outline" size={20} color="#3b82f6" />
@@ -562,22 +561,22 @@ const JobDetail = () => {
             </View>
           </View>
         </TouchableOpacity>
-        
+
         {/* Similar jobs */}
         {similarJobs.length > 0 && (
           <View className="mb-24">
-            <JobSuggestion 
-              jobs={similarJobs} 
-              currentJobId={job.uuid} 
+            <JobSuggestion
+              jobs={similarJobs}
+              currentJobId={job.uuid}
               title="Công việc tương tự"
             />
           </View>
         )}
-        
+
         {/* Spacer for floating action button */}
         <View className="h-20" />
       </Animated.ScrollView>
-      
+
       {/* Application Modal */}
       <Modal
         animationType="slide"
@@ -597,12 +596,12 @@ const JobDetail = () => {
                   <Ionicons name="close-outline" size={28} color="#64748b" />
                 </TouchableOpacity>
               </View>
-              
+
               <View className="py-2">
                 <Text className="text-lg font-bold text-gray-800 mb-1">{job.title}</Text>
                 <Text className="text-base text-gray-600">{job.company.name}</Text>
               </View>
-              
+
               <View className="mt-4 mb-3">
                 <Text className="text-base font-semibold text-gray-700 mb-2">Thư xin việc</Text>
                 <TextInput
@@ -614,7 +613,7 @@ const JobDetail = () => {
                   style={{ textAlignVertical: 'top' }}
                 />
               </View>
-              
+
               <View className="mt-2 mb-5">
                 <Text className="text-sm text-gray-500 italic mb-3">
                   Thư xin việc là cơ hội để bạn thể hiện bản thân và giải thích lý do bạn là ứng viên phù hợp.
@@ -625,16 +624,16 @@ const JobDetail = () => {
                   • Thể hiện sự hiểu biết về công ty và nhiệm vụ
                 </Text>
               </View>
-              
+
               <View className="flex-row gap-3">
-                <TouchableOpacity 
+                <TouchableOpacity
                   className="flex-1 py-3 rounded-xl bg-gray-200"
                   onPress={() => setModalVisible(false)}
                 >
                   <Text className="text-gray-700 text-center font-semibold">Hủy</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   className="flex-1 py-3 rounded-xl bg-blue-600 flex-row justify-center items-center"
                   onPress={handleSubmitApplication}
                   disabled={applyLoading}
@@ -653,10 +652,39 @@ const JobDetail = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-      
+
+
+{/* Report Form Modal */}
+<Modal
+  animationType="slide"
+  transparent={true}
+  visible={showReportModal}
+  onRequestClose={() => setShowReportModal(false)}
+>
+  <KeyboardAvoidingView
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+    className="flex-1 justify-end"
+  >
+    <View className="bg-black bg-opacity-50 flex-1 justify-end">
+      <View className="bg-white rounded-t-3xl max-h-4/5">
+        <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
+          <Text className="text-xl font-bold text-gray-800">Báo cáo công việc</Text>
+          <TouchableOpacity onPress={() => setShowReportModal(false)}>
+            <Ionicons name="close-outline" size={28} color="#64748b" />
+          </TouchableOpacity>
+        </View>
+        
+        <View className="max-h-[80vh]">
+          <ReportForm targetType="job" targetUuid={uuid as string} />
+        </View>
+      </View>
+    </View>
+  </KeyboardAvoidingView>
+</Modal>
+
       {/* Floating apply button */}
       <View className="absolute bottom-0 left-0 right-0 bg-white py-3 px-4 shadow-lg border-t border-gray-200">
-        <TouchableOpacity 
+        <TouchableOpacity
           className={`py-3 rounded-xl flex-row justify-center items-center ${isAlreadyApplied ? 'bg-green-600' : 'bg-blue-600'}`}
           onPress={handleApplyPress}
         >

@@ -1,20 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  ActivityIndicator, 
-  TouchableOpacity, 
-  Linking, 
-  RefreshControl,
-  Image
-} from 'react-native';
-import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { getCompanyDetail } from '../../service/companyService';
+import ReportForm from '@/components/ReportForm';
 import { CompanyDetail } from '@/types/company';
-import { createConversation } from '../../service/conversationService';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { useStudent } from '../../contexts/StudentContext';
+import { getCompanyDetail } from '../../service/companyService';
+import { createConversation } from '../../service/conversationService';
 
 const CompanyDetailScreen = () => {
   const { uuid } = useLocalSearchParams<{ uuid: string }>();
@@ -25,6 +28,8 @@ const CompanyDetailScreen = () => {
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
 
    const { student, loading: studentLoading } = useStudent();// Get student data from context
+   //Report Form
+     const [showReportModal, setShowReportModal] = useState(false);
   const router = useRouter();
 
   const fetchCompanyDetail = async () => {
@@ -167,8 +172,17 @@ const CompanyDetailScreen = () => {
               </Text>
             </View>
           </View>
+          
         </View>
       </View>
+      <TouchableOpacity
+  className="absolute top-6 right-6"
+  onPress={() => setShowReportModal(true)}
+>
+  <View className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center">
+    <Feather name="flag" size={18} color="#EF4444" />
+  </View>
+</TouchableOpacity>
       <View className="bg-white px-6 py-4 mb-4 shadow-sm">
   <TouchableOpacity 
     className={`bg-blue-500 rounded-full py-3 items-center flex-row justify-center ${isCreatingConversation ? 'opacity-50' : ''}`}
@@ -245,6 +259,33 @@ const CompanyDetailScreen = () => {
 
       {/* Jobs at this company - can be added if you have job data related to this company */}
       <View className="h-16" />
+      {/* Report Form Modal */}
+<Modal
+  animationType="slide"
+  transparent={true}
+  visible={showReportModal}
+  onRequestClose={() => setShowReportModal(false)}
+>
+  <KeyboardAvoidingView
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+    className="flex-1 justify-end"
+  >
+    <View className="bg-black bg-opacity-50 flex-1 justify-end">
+      <View className="bg-white rounded-t-3xl max-h-4/5">
+        <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
+          <Text className="text-xl font-bold text-gray-800">Báo cáo công ty</Text>
+          <TouchableOpacity onPress={() => setShowReportModal(false)}>
+            <Feather name="x" size={24} color="#64748b" />
+          </TouchableOpacity>
+        </View>
+        
+        <View className="max-h-[80vh]">
+          <ReportForm targetType="company" targetUuid={uuid as string} />
+        </View>
+      </View>
+    </View>
+  </KeyboardAvoidingView>
+</Modal>
     </ScrollView>
   );
 };
