@@ -6,6 +6,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { JobSuggestions } from "@/components/JobSuggestion";
 import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
@@ -424,7 +425,9 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
             </TouchableOpacity>
           </View>
         )}
+        <JobSuggestions></JobSuggestions>
       </ScrollView>
+      
     </View>
   );
 };
