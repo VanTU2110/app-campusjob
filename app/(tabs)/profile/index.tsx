@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Image, Alert } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getStudentProfile } from "@/service/studentService";
-import { useRouter } from "expo-router";
-import { StudentDetail } from "@/types/student";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStudent } from "@/contexts/StudentContext";
+import { getStudentProfile } from "@/service/studentService";
+import { StudentDetail } from "@/types/student";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
   const [profile, setProfile] = useState<StudentDetail | null>(null);
@@ -249,13 +249,13 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
 
                 {/* Lịch ứng tuyển */}
                 <TouchableOpacity
-                  onPress={() => router.push("./applied/index")}
+                  onPress={() => router.push("/skills")}
                   className="items-center w-[18%]"
                 >
                   <View className="bg-indigo-100 w-12 h-12 rounded-full items-center justify-center mb-1">
                     <Ionicons name="calendar-outline" size={22} color="#6366f1" />
                   </View>
-                  <Text className="text-xs font-medium text-center text-gray-700">Lịch ứng tuyển</Text>
+                  <Text className="text-xs font-medium text-center text-gray-700">Kĩ năng</Text>
                 </TouchableOpacity>
 
                 {/* Đăng xuất */}

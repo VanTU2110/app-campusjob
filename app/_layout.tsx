@@ -54,6 +54,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="company/[uuid]" options={{ title: 'Company Detail' }} />
                 <Stack.Screen name="auth" options={{ headerShown: false }} />
                 <Stack.Screen name="conversations/[uuid]" options={{ title: 'Tin nhắn',headerShown: false }} />
+                <Stack.Screen name="skill" options={{ title: 'Kỹ năng',headerShown: false }} />
                 <Stack.Screen name="+not-found" />
               </Stack>
               <StatusBar style="auto" />
