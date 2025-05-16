@@ -18,6 +18,7 @@ import { getListPageJob } from '../../service/jobService';
 import { GetJobListParams, JobItem } from '../../types/job';
 
 // Components
+import { JobSuggestions } from '@/components/JobSuggestion';
 import JobCard from '../../components/JobCard';
 import { useStudent } from '../../contexts/StudentContext';
 
@@ -268,6 +269,12 @@ const JobPage = () => {
             </Text>
             <Text className="text-2xl font-bold text-blue-600">Tìm kiếm công việc mơ ước</Text>
           </View>
+          <TouchableOpacity
+      className="w-10 h-10 bg-yellow-100 rounded-full justify-center items-center"
+      onPress={() => router.push('/warnings')}
+    >
+      <Ionicons name="warning-outline" size={22} color="#F59E0B" />
+    </TouchableOpacity>
           <TouchableOpacity 
             className="w-10 h-10 bg-blue-100 rounded-full justify-center items-center"
             onPress={navigateToConversation}
@@ -297,10 +304,10 @@ const JobPage = () => {
             </TouchableOpacity>
           )}
         </View>
-        
+       
         {/* Bộ lọc */}
         <FilterSection />
-        
+        <JobSuggestions />
         {/* Hiển thị tổng số */}
         <View className="flex-row justify-between items-center mb-2">
           <Text className="text-sm text-gray-600">Tìm thấy {totalJobs} công việc</Text>
