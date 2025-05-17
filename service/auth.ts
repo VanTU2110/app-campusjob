@@ -1,3 +1,4 @@
+import { UserResponse, verifyUserParams } from "@/types/user";
 import api from "./api";
 
 // Đăng ký tài khoản
@@ -19,3 +20,12 @@ export const login = async (email: string, password: string) => {
     throw error.response?.data?.message || "Login failed!";
   }
 };
+export const verifyUser = async(params:verifyUserParams):Promise<UserResponse> =>{
+  try {
+      const response = await api.post<UserResponse>(`Auth/verify-user`,params)
+      return response.data;
+  } catch (error) {
+      console.error("Error verify user",error);
+      throw error;
+  }
+}

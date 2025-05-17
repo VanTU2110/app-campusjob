@@ -1,21 +1,25 @@
+import { JobSuggestions } from "@/components/JobSuggestion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStudent } from "@/contexts/StudentContext";
 import { getStudentProfile } from "@/service/studentService";
+import { detailUser } from "@/service/userService";
 import { StudentDetail } from "@/types/student";
+import { User } from "@/types/user";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { JobSuggestions } from "@/components/JobSuggestion";
 import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
   const [profile, setProfile] = useState<StudentDetail | null>(null);
+  const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("personal");
   const { logout } = useAuth();
-  const {clearStudentData } = useStudent();
+  const { clearStudentData } = useStudent();
   const router = useRouter();
+
   const handleLogout = async () => {
     Alert.alert(
       'Đăng xuất',
@@ -30,11 +34,8 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Quan trọng: Xóa dữ liệu sinh viên trước
               clearStudentData();
-              // Sau đó đăng xuất
               await logout();
-              // Router sẽ tự chuyển hướng về trang đăng nhập do _layout.tsx
             } catch (error) {
               console.error('Lỗi khi đăng xuất:', error);
               Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại.');
@@ -45,34 +46,84 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
       { cancelable: true }
     );
   };
-  
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const userUuid = await AsyncStorage.getItem("uuid");
-      if (userUuid) {
-        fetchStudentProfile(userUuid);
-      }
-    };
-    fetchUserData();
-  }, []);
 
-  const fetchStudentProfile = async (userUuid: string) => {
+  const navigateToVerifyOTP = () => {
     try {
-      const response = await getStudentProfile(userUuid);
-      if (response?.data) {
-        setProfile(response.data);
-        console.log("Profile data:", response.data);
+      if (!userData) {
+        throw new Error("Không tìm thấy thông tin người dùng");
       }
+      
+      if (!userData.email) {
+        throw new Error("Không tìm thấy email");
+      }
+  
+      router.push({
+        pathname: "/auth/verifyOTP",
+        params: { 
+          email: userData.email,
+          // Có thể thêm các params khác nếu cần
+          uuid: userData.uuid 
+        }
+      });
     } catch (error) {
-      console.error("Error fetching profile:", error);
-      setProfile(null);
-    } finally {
-      setLoading(false);
+      console.error("Lỗi khi chuyển đến màn hình xác thực:", error);
+     
     }
   };
 
+  const VerifyBadge = ({ isVerified }: { isVerified: boolean }) => {
+    if (isVerified) {
+      return (
+        <View className="flex-row items-center ml-1">
+          <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+          <Text className="text-xs text-green-600 ml-1">Đã xác thực</Text>
+        </View>
+      );
+    }
+  
+    return (
+      <TouchableOpacity 
+        onPress={navigateToVerifyOTP}
+        className="flex-row items-center ml-1 bg-yellow-50 px-2 py-1 rounded-full"
+      >
+        <Ionicons name="alert-circle" size={14} color="#F59E0B" />
+        <Text className="text-xs text-yellow-700 ml-1">Chưa xác thực</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const userUuid = await AsyncStorage.getItem("uuid");
+      if (userUuid) {
+        try {
+          // Fetch user data for verification status
+          const userResponse = await detailUser(userUuid);
+          if (userResponse?.data) {
+            setUserData(userResponse.data);
+          }
+
+          // Fetch student profile
+          const profileResponse = await getStudentProfile(userUuid);
+          if (profileResponse?.data) {
+            setProfile(profileResponse.data);
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
+
   const formatTime = (time: string) => {
-    return time ? time.substring(0, 5) : ""; // Format "08:00" from "08:00:00"
+    return time ? time.substring(0, 5) : "";
   };
 
   const formatDate = (dateString: string) => {
@@ -98,7 +149,6 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
       );
     }
 
-    // Cấu trúc với chữ thường phù hợp với data
     const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     const vietnameseDays = {
       "monday": "Thứ Hai",
@@ -166,15 +216,12 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
     );
   };
 
-  // Kiểm tra các trường unicode bị lỗi (như university, city names)
   const fixUnicodeText = (text: string | undefined) => {
     if (!text) return "Chưa cập nhật";
 
-    // Nếu text có ký tự Unicode lỗi (như Äáº¡i há»c), trả về phiên bản được sửa
     if (/Ä|á»|á»|á»|á»|áº|áº|á»|á»/.test(text)) {
-      // Thử sửa một số trường hợp phổ biến
       if (text.includes("Äáº¡i há»c")) return "Đại học" + text.split("Äáº¡i há»c")[1];
-      return "Đã cập nhật"; // Trả về giá trị mặc định nếu không thể sửa
+      return "Đã cập nhật";
     }
 
     return text;
@@ -211,11 +258,29 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
                   className="w-20 h-20 rounded-full border-4 border-indigo-100"
                 />
                 <View className="ml-4 flex-1">
-                  <Text className="text-xl font-bold text-gray-900">{profile.fullname}</Text>
+                  <View className="flex-row items-center">
+                    <Text className="text-xl font-bold text-gray-900">{profile.fullname}</Text>
+                    {userData && <VerifyBadge isVerified={userData.isVerify} />}
+                  </View>
                   <Text className="text-gray-600">{fixUnicodeText(profile.major)}</Text>
                   <Text className="text-gray-600">{fixUnicodeText(profile.university)}</Text>
                 </View>
               </View>
+
+              {userData && !userData.isVerify && (
+                <View className="bg-yellow-50 p-3 rounded-lg mt-4 flex-row items-center">
+                  <Ionicons name="warning" size={20} color="#F59E0B" />
+                  <Text className="text-yellow-700 ml-2 flex-1">
+      Tài khoản chưa được xác thực. Vui lòng xác thực email {userData.email} để sử dụng đầy đủ tính năng.
+    </Text>
+                  <TouchableOpacity 
+                    onPress={navigateToVerifyOTP}
+                    className="bg-yellow-100 px-3 py-1 rounded-full"
+                  >
+                    <Text className="text-yellow-700 text-sm">Xác thực ngay</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               <View className="flex-row justify-evenly mt-6">
                 <TouchableOpacity
@@ -248,7 +313,6 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
                   <Text className="text-xs font-medium text-gray-700">Chỉnh Sửa</Text>
                 </TouchableOpacity>
 
-                {/* Lịch ứng tuyển */}
                 <TouchableOpacity
                   onPress={() => router.push("/skills")}
                   className="items-center w-[18%]"
@@ -259,7 +323,6 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
                   <Text className="text-xs font-medium text-center text-gray-700">Kĩ năng</Text>
                 </TouchableOpacity>
 
-                {/* Đăng xuất */}
                 <TouchableOpacity
                   onPress={handleLogout}
                   className="items-center w-[18%]"
@@ -427,7 +490,6 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
         )}
         <JobSuggestions></JobSuggestions>
       </ScrollView>
-      
     </View>
   );
 };
