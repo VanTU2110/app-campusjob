@@ -48,7 +48,7 @@ function RootLayoutNav() {
         <JobSaveProvider>
           <JobHistoryProvider>
             <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-              <Stack>
+              <Stack initialRouteName="onboarding">
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="jobs/[uuid]" options={{ title: 'Job Detail' }} />
                 <Stack.Screen name="company/[uuid]" options={{ title: 'Company Detail' }} />
@@ -56,6 +56,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="conversations/[uuid]" options={{ title: 'Tin nhắn',headerShown: false }} />
                 <Stack.Screen name="skill" options={{ title: 'Kỹ năng',headerShown: false }} />
                 <Stack.Screen name = "warnings" options={{ title: 'Cảnh báo',headerShown: true }} />
+                <Stack.Screen name="onboarding" options={{ title: 'Onboarding',headerShown: false }} />
                 <Stack.Screen name="+not-found" />
               </Stack>
               <StatusBar style="auto" />

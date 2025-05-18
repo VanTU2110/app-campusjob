@@ -8,7 +8,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+type JobInvite = {
+  uuid: string;
+  title: string;
+  salary: string;
+};
 export default function ConversationScreen() {
   const { uuid } = useLocalSearchParams();
   const conversationUuid = Array.isArray(uuid) ? uuid[0] : uuid || '';
@@ -22,6 +26,38 @@ export default function ConversationScreen() {
   
   const connectionRef = useRef<SignalR.HubConnection | null>(null);
   const flatListRef = useRef<FlatList>(null);
+// Hàm phân tích tin nhắn job invite
+const parseJobInvite = (content: string): { isJobInvite: boolean; job?: JobInvite; message?: string } => {
+  const jobInviteRegex = /\[JOB_INVITE (.+?)\]\[\/JOB_INVITE\]/;
+  const match = content.match(jobInviteRegex);
+  
+  if (!match) return { isJobInvite: false };
+  
+  try {
+    const paramsString = match[1];
+    const params = paramsString.split(' ');
+    
+    const job: Partial<JobInvite> = {};
+    params.forEach(param => {
+      const [key, value] = param.split('=');
+      if (key && value) {
+        job[key as keyof JobInvite] = value.replace(/^"|"$/g, '');
+      }
+    });
+    
+    if (job.uuid && job.title && job.salary) {
+      return {
+        isJobInvite: true,
+        job: job as JobInvite,
+        message: content.replace(jobInviteRegex, '').trim()
+      };
+    }
+  } catch (error) {
+    console.error('Error parsing job invite:', error);
+  }
+  
+  return { isJobInvite: false };
+};
 
   // Lấy lịch sử tin nhắn
   const fetchMessages = useCallback(async () => {
@@ -64,7 +100,7 @@ export default function ConversationScreen() {
         
         // Tạo kết nối SignalR - thay thế URL bằng URL thực tế của server SignalR
         const connection = new HubConnectionBuilder()
-          .withUrl('http://192.168.0.108:5109/chatHub', {
+          .withUrl('http://192.168.1.14:5109/chatHub', {
             skipNegotiation: true,
             transport: SignalR.HttpTransportType.WebSockets
           })
@@ -319,24 +355,51 @@ export default function ConversationScreen() {
     }
   };
   
-  // Hiển thị tin nhắn
+  // Render tin nhắn
   const renderMessage = ({ item }: { item: Message }) => {
     const isCurrentUser = item.senderUuid === student?.data.uuid;
-    const isTemporary = item.uuid?.startsWith('temp-');
-    const isSending = item._sending === true;
-    const hasFailed = item._failed === true;
+    const { isJobInvite, job, message } = parseJobInvite(item.content);
     
+    const handleJobPress = () => {
+      if (job) {
+        router.push({ pathname: '/jobs/[uuid]', params: { uuid: job.uuid } });
+      }
+    };
+
     return (
-      <View className={`max-w-3/4 my-1 px-3 py-2 rounded-2xl ${isCurrentUser ? 'self-end bg-blue-500' : 'self-start bg-gray-200'}`}>
-        <Text className={`${isCurrentUser ? 'text-white' : 'text-gray-800'}`}>{item.content}</Text>
-        <View className="flex-row items-center justify-end mt-1">
+      <View className={`max-w-3/4 my-1 ${isCurrentUser ? 'items-end' : 'items-start'}`}>
+        {isJobInvite && job && (
+          <Pressable 
+            onPress={handleJobPress}
+            className={`w-full mb-1 border rounded-xl overflow-hidden ${isCurrentUser ? 'border-blue-300' : 'border-gray-300'}`}
+          >
+            <View className={`p-3 ${isCurrentUser ? 'bg-blue-50' : 'bg-gray-50'}`}>
+              <Text className="font-bold text-lg">{job.title}</Text>
+              <Text className="text-gray-600 mt-1">Mức lương: {job.salary}</Text>
+              <View className="flex-row items-center mt-2">
+                <Text className="text-blue-500 text-sm">Xem chi tiết công việc</Text>
+                <Ionicons name="chevron-forward" size={16} color="#3b82f6" />
+              </View>
+            </View>
+          </Pressable>
+        )}
+        
+        {(message || !isJobInvite) && (
+          <View className={`px-3 py-2 rounded-2xl ${isCurrentUser ? 'bg-blue-500' : 'bg-gray-200'}`}>
+            <Text className={`${isCurrentUser ? 'text-white' : 'text-gray-800'}`}>
+              {message || item.content}
+            </Text>
+          </View>
+        )}
+        
+        <View className={`flex-row items-center justify-end mt-1 ${isCurrentUser ? 'self-end' : 'self-start'}`}>
           <Text className={`text-xs ${isCurrentUser ? 'text-blue-100' : 'text-gray-500'}`}>
             {new Date(item.sendAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
-          {isSending && (
+          {item._sending && (
             <ActivityIndicator size="small" color={isCurrentUser ? "#fff" : "#999"} style={{ marginLeft: 5 }} />
           )}
-          {hasFailed && (
+          {item._failed && (
             <Ionicons name="alert-circle" size={12} color={isCurrentUser ? "#ff9999" : "#ff6666"} style={{ marginLeft: 5 }} />
           )}
         </View>

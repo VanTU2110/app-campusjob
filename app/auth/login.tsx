@@ -88,6 +88,12 @@ const LoginScreen = () => {
             <Text className="text-blue-500 font-semibold">Đăng ký ngay</Text>
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+  onPress={() => router.replace("/onboarding")}
+  className="mt-6 bg-gray-300 px-4 py-3 rounded-lg"
+>
+  <Text className="text-gray-700 font-semibold">Quay lại màn Onboarding</Text>
+</TouchableOpacity>
       </View>
     </ScrollView>
   );
