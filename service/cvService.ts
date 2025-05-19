@@ -1,8 +1,8 @@
 import { insertCVParams } from "@/types/cv";
 import api from "./api";
-export const getListCV = async (student_Uuid: string) => {
+export const getListCV = async (studentUuid: string) => {
     try {
-        const response = await api.post("/CV/get-list-cv-student", { student_Uuid });
+        const response = await api.post("/CV/get-list-cv-student", { studentUuid });
         return response.data
     } catch (error: any) {
         throw error.response?.data?.message || "Get list CV failed"

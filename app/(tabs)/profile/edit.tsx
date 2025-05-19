@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { KeyboardAvoidingView, Platform } from "react-native";
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
-import { useForm, Controller } from "react-hook-form";
+import { getListDistrict, getListProvinsie, getListWard } from "@/service/regionService";
+import { getStudentProfile, updateStudentProfile } from "@/service/studentService";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getStudentProfile, updateStudentProfile } from "@/service/studentService";
-import { getListProvinsie, getListDistrict, getListWard } from "@/service/regionService";
 import { Picker } from "@react-native-picker/picker";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 const EditStudentProfileScreen = ({ navigation }: { navigation: any }) => {
     const { control, handleSubmit, setValue, formState: { errors } } = useForm();
     const [selectedGender, setSelectedGender] = useState();
