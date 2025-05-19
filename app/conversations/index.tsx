@@ -66,7 +66,7 @@ const  ConversationScreen = () =>{
         <View className="flex-1">
           <View className="flex-row justify-between items-center mb-2">
             <Text className="text-base font-semibold flex-1 mr-2 text-gray-800" numberOfLines={1}>
-              {item.companyUuid}
+              {item.company.name}
             </Text>
             <Text className="text-xs text-gray-500">{formattedDate}</Text>
           </View>

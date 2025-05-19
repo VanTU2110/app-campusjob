@@ -1,7 +1,14 @@
-
+export interface Student{
+    uuid: string;
+    name: string;
+}
+export interface Company{
+    uuid: string;
+    name: string;
+}
 export interface Conversation {
-    studentUuid: string;
-    companyUuid: string;
+    student: Student;
+    company: Company;
     createdAt: string;
     uuid: string;
 }

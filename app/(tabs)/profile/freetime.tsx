@@ -1,308 +1,257 @@
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl } from 'react-native-gesture-handler';
 import { useStudent } from '../../../contexts/StudentContext';
-import { CreateStudentAvailability, GetListAvaibility } from '../../../service/studenAvailabilityService';
+import { CreateStudentAvailability, GetListAvaibility, deleteAvailability } from '../../../service/studenAvailabilityService';
 import { StudentAvailability } from '../../../types/studentAvailability';
 
-const DAYS_OF_WEEK = [
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-  'ssunday',
+const daysOfWeek = [
+  { label: 'Thứ Hai', value: 'monday' },
+  { label: 'Thứ Ba', value: 'tuesday' },
+  { label: 'Thứ Tư', value: 'wednesday' },
+  { label: 'Thứ Năm', value: 'thursday' },
+  { label: 'Thứ Sáu', value: 'friday' },
+  { label: 'Thứ Bảy', value: 'saturday' },
+  { label: 'Chủ Nhật', value: 'sunday' },
 ];
 
-// Helper function to format time for display
-const formatTime = (timeString: string) => {
-  const [hours, minutes] = timeString.split(':');
-  return `${hours}:${minutes}:00`;
-};
-
-// Helper function to convert Date to time string (HH:MM format)
-const dateToTimeString = (date: Date) => {
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
-};
-
-export default function StudentAvailabilityScreen() {
-  const { student, loading: studentLoading } = useStudent();
-  
+const AvailabilityScreen = () => {
+  const { student } = useStudent();
   const [availabilities, setAvailabilities] = useState<StudentAvailability[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  
+  const [refreshing, setRefreshing] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState<'start' | 'end' | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
   // Form state
-  const [selectedDay, setSelectedDay] = useState(DAYS_OF_WEEK[0]);
+  const [dayOfWeek, setDayOfWeek] = useState('Monday');
   const [startTime, setStartTime] = useState(new Date());
-  const [endTime, setEndTime] = useState(new Date(new Date().setHours(startTime.getHours() + 1)));
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Fetch student availabilities
-  const fetchAvailabilities = async () => {
-    if (!student || !student.data || !student.data.uuid) {
-      setError('Student data not available');
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await GetListAvaibility(student.data.uuid);
-      if (response.error && response.error.code !== "success") {
-        setError(response.error.message);
-      } else {
-        setAvailabilities(response.data || []);
-      }
-    } catch (err) {
-      setError('Failed to load availabilities');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [endTime, setEndTime] = useState(new Date());
 
   useEffect(() => {
-    // Only fetch if student data is available
-    if (student?.data?.uuid) {
+    if (student?.data.uuid) {
       fetchAvailabilities();
     }
-  }, [student]);
+  }, [student?.data.uuid]);
 
-  // Handle time picker changes
-  const onStartTimeChange = (event: any, selectedDate?: Date) => {
-    setShowStartPicker(false);
-    if (selectedDate) {
-      setStartTime(selectedDate);
-      
-      // If end time is now before start time, adjust it
-      if (selectedDate > endTime) {
-        const newEndTime = new Date(selectedDate);
-        newEndTime.setHours(selectedDate.getHours() + 1);
-        setEndTime(newEndTime);
+  const fetchAvailabilities = async () => {
+    try {
+      setLoading(true);
+      const response = await GetListAvaibility(student?.data.uuid ?? '');
+      if (response.data) {
+        setAvailabilities(response.data);
       }
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể tải lịch rảnh');
+      console.error(error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const onEndTimeChange = (event: any, selectedDate?: Date) => {
-    setShowEndPicker(false);
-    if (selectedDate) {
-      setEndTime(selectedDate);
-    }
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchAvailabilities();
   };
 
-  // Handle form submission
-  const handleSubmit = async () => {
-    if (!student?.data?.uuid) {
-      Alert.alert('Error', 'Student information not available');
-      return;
-    }
+  const handleAddAvailability = async () => {
+    if (!student?.data.uuid) return;
 
-    // Validate times
-    if (startTime >= endTime) {
-      Alert.alert('Invalid Time', 'End time must be after start time');
-      return;
-    }
-
-    setSubmitting(true);
     try {
       const params = {
         studentUuid: student.data.uuid,
-        dayOfWeek: selectedDay,
-        startTime: dateToTimeString(startTime),
-        endTime: dateToTimeString(endTime),
+        dayOfWeek,
+        startTime: startTime.toTimeString().substring(0, 5),
+        endTime: endTime.toTimeString().substring(0, 5),
       };
 
-      const response = await CreateStudentAvailability(params);
-      
-      if (response.error && response.error.code !== "success") {
-        Alert.alert('Error', response.error.message);
-      } else {
-        // Success
-        setShowAddForm(false);
-        fetchAvailabilities(); // Refresh the list
-        Alert.alert('Success', 'Availability added successfully');
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to add availability');
-      console.error(err);
-    } finally {
-      setSubmitting(false);
+      await CreateStudentAvailability(params);
+      Alert.alert('Thành công', 'Thêm lịch rảnh thành công');
+      setShowForm(false);
+      fetchAvailabilities();
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể thêm lịch rảnh');
+      console.error(error);
     }
   };
 
-  // Group availabilities by day for better display
-  const availabilitiesByDay = DAYS_OF_WEEK.map(day => {
-    return {
-      day,
-      slots: availabilities.filter(slot => slot.dayOfWeek === day)
-    };
-  });
-
-  // Show loading when student data is still loading
-  if (studentLoading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text className="mt-2 text-gray-600">Loading student data...</Text>
-      </View>
+  const handleDelete = async (uuid: string) => {
+    Alert.alert(
+      'Xác nhận',
+      'Bạn có chắc chắn muốn xóa lịch rảnh này?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAvailability(uuid);
+              fetchAvailabilities();
+            } catch (error) {
+              Alert.alert('Lỗi', 'Không thể xóa lịch rảnh');
+              console.error(error);
+            }
+          },
+        },
+      ]
     );
-  }
+  };
 
-  // Check if student data is available
-  if (!student || !student.data) {
-    return (
-      <View className="flex-1 justify-center items-center bg-white p-4">
-        <Text className="text-red-500 text-lg">Student data not available</Text>
-        <Text className="text-gray-500 mt-2">Please log in or refresh the page</Text>
+  const formatTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours, 10));
+    date.setMinutes(parseInt(minutes, 10));
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderAvailabilityItem = (item: StudentAvailability) => (
+    <View key={item.uuid} className="bg-white p-4 rounded-lg shadow-sm mb-3 flex-row justify-between items-center">
+      <View>
+        <Text className="font-semibold text-gray-800">
+          {daysOfWeek.find(day => day.value === item.dayOfWeek)?.label}
+        </Text>
+        <Text className="text-gray-600">
+          {formatTime(item.startTime)} - {formatTime(item.endTime)}
+        </Text>
       </View>
-    );
-  }
+      <TouchableOpacity
+        onPress={() => handleDelete(item.uuid)}
+        className="p-2 bg-red-50 rounded-full"
+      >
+        <Ionicons name="trash-outline" size={20} color="#ef4444" />
+      </TouchableOpacity>
+    </View>
+  );
 
-  return (
-    <View className="flex-1 bg-white">
-      <Stack.Screen options={{ 
-        title: "Student Availability",
-        headerShadowVisible: false,
-      }} />
-
-      {/* Add button */}
-      <View className="px-4 py-2 border-b border-gray-200">
-        <TouchableOpacity 
-          className="bg-blue-500 py-2 px-4 rounded-md" 
-          onPress={() => setShowAddForm(!showAddForm)}
-        >
-          <Text className="text-white text-center font-medium">
-            {showAddForm ? 'Cancel' : 'Add New Availability'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Add form */}
-      {showAddForm && (
-        <View className="p-4 bg-gray-50">
-          <Text className="text-lg font-bold mb-4">Add New Availability</Text>
-          
-          {/* Day selection */}
-          <Text className="font-medium mb-1">Day of Week</Text>
-          <View className="bg-white border border-gray-300 rounded-md mb-4">
-            <Picker
-              selectedValue={selectedDay}
-              onValueChange={(itemValue) => setSelectedDay(itemValue)}
-            >
-              {DAYS_OF_WEEK.map((day) => (
-                <Picker.Item key={day} label={day} value={day} />
-              ))}
-            </Picker>
-          </View>
-
-          {/* Time selection */}
-          <View className="flex-row justify-between mb-4">
-            <View className="flex-1 mr-2">
-              <Text className="font-medium mb-1">Start Time</Text>
-              <TouchableOpacity 
-                className="bg-white border border-gray-300 rounded-md p-3"
-                onPress={() => setShowStartPicker(true)}
-              >
-                <Text>{startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
-              </TouchableOpacity>
-              {showStartPicker && (
-                <DateTimePicker
-                  value={startTime}
-                  mode="time"
-                  is24Hour={true}
-                  display="default"
-                  onChange={onStartTimeChange}
-                />
-              )}
-            </View>
-            
-            <View className="flex-1 ml-2">
-              <Text className="font-medium mb-1">End Time</Text>
-              <TouchableOpacity 
-                className="bg-white border border-gray-300 rounded-md p-3"
-                onPress={() => setShowEndPicker(true)}
-              >
-                <Text>{endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
-              </TouchableOpacity>
-              {showEndPicker && (
-                <DateTimePicker
-                  value={endTime}
-                  mode="time"
-                  is24Hour={true}
-                  display="default"
-                  onChange={onEndTimeChange}
-                />
-              )}
-            </View>
-          </View>
-
-          {/* Submit button */}
-          <TouchableOpacity 
-            className={`${submitting ? 'bg-blue-300' : 'bg-blue-500'} py-3 rounded-md`}
-            onPress={handleSubmit}
-            disabled={submitting}
+  const renderForm = () => (
+    <View className="bg-white p-4 rounded-lg shadow-sm mb-4">
+      <Text className="text-lg font-bold mb-4 text-gray-800">Thêm lịch rảnh</Text>
+      
+      <View className="mb-4">
+        <Text className="text-sm font-medium text-gray-700 mb-1">Ngày trong tuần</Text>
+        <View className="border border-gray-300 rounded-lg">
+          <Picker
+            selectedValue={dayOfWeek}
+            onValueChange={(itemValue) => setDayOfWeek(itemValue)}
           >
-            {submitting ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text className="text-white text-center font-medium">Save Availability</Text>
-            )}
+            {daysOfWeek.map(day => (
+              <Picker.Item key={day.value} label={day.label} value={day.value} />
+            ))}
+          </Picker>
+        </View>
+      </View>
+
+      <View className="flex-row justify-between mb-4">
+        <View className="w-[48%]">
+          <Text className="text-sm font-medium text-gray-700 mb-1">Bắt đầu</Text>
+          <TouchableOpacity
+            onPress={() => setShowTimePicker('start')}
+            className="border border-gray-300 rounded-lg p-3"
+          >
+            <Text>{startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           </TouchableOpacity>
         </View>
+
+        <View className="w-[48%]">
+          <Text className="text-sm font-medium text-gray-700 mb-1">Kết thúc</Text>
+          <TouchableOpacity
+            onPress={() => setShowTimePicker('end')}
+            className="border border-gray-300 rounded-lg p-3"
+          >
+            <Text>{endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {showTimePicker && (
+        <DateTimePicker
+          value={showTimePicker === 'start' ? startTime : endTime}
+          mode="time"
+          is24Hour={true}
+          display="default"
+          onChange={(event, selectedTime) => {
+            setShowTimePicker(null);
+            if (selectedTime) {
+              if (showTimePicker === 'start') {
+                setStartTime(selectedTime);
+              } else {
+                setEndTime(selectedTime);
+              }
+            }
+          }}
+        />
       )}
 
-      {/* Loading state */}
+      <View className="flex-row justify-end space-x-3 mt-2">
+        <TouchableOpacity
+          onPress={() => setShowForm(false)}
+          className="px-4 py-2 border border-gray-300 rounded-lg"
+        >
+          <Text className="text-gray-700">Hủy</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleAddAvailability}
+          className="px-4 py-2 bg-blue-600 rounded-lg"
+        >
+          <Text className="text-white">Lưu</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return (
+    <View className="flex-1 bg-gray-50 p-4">
+      <Stack.Screen options={{ title: 'Lịch rảnh của tôi' }} />
+      
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#0000ff" />
-          <Text className="mt-2 text-gray-600">Loading availabilities...</Text>
-        </View>
-      ) : error ? (
-        <View className="flex-1 justify-center items-center p-4">
-          <Text className="text-red-500">{error}</Text>
-          <TouchableOpacity 
-            className="mt-4 bg-blue-500 py-2 px-4 rounded-md"
-            onPress={fetchAvailabilities}
-          >
-            <Text className="text-white">Retry</Text>
-          </TouchableOpacity>
+          <ActivityIndicator size="large" color="#3b82f6" />
         </View>
       ) : (
-        <ScrollView className="flex-1">
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={['#3b82f6']}
+            />
+          }
+        >
+          {showForm ? (
+            renderForm()
+          ) : (
+            <TouchableOpacity
+              onPress={() => setShowForm(true)}
+              className="mb-4 flex-row items-center justify-center bg-blue-600 p-3 rounded-lg"
+            >
+              <Ionicons name="add" size={20} color="white" />
+              <Text className="text-white ml-2 font-medium">Thêm lịch rảnh</Text>
+            </TouchableOpacity>
+          )}
+
           {availabilities.length === 0 ? (
-            <View className="p-4 flex-1 justify-center items-center">
-              <Text className="text-gray-500 text-lg">No availabilities found</Text>
-              <Text className="text-gray-400 mt-1">Add your first availability using the button above</Text>
+            <View className="bg-white p-6 rounded-lg items-center justify-center">
+              <Ionicons name="calendar-outline" size={48} color="#9ca3af" />
+              <Text className="text-gray-500 mt-2 text-center">Bạn chưa có lịch rảnh nào</Text>
+              <Text className="text-gray-400 text-center mt-1">Nhấn nút "Thêm lịch rảnh" để bắt đầu</Text>
             </View>
           ) : (
-            <View className="p-4">
-              {availabilitiesByDay.map((dayGroup) => (
-                dayGroup.slots.length > 0 && (
-                  <View key={dayGroup.day} className="mb-4">
-                    <Text className="text-lg font-bold mb-2">{dayGroup.day}</Text>
-                    {dayGroup.slots.map((slot) => (
-                      <View key={slot.uuid} className="bg-gray-50 p-3 mb-2 rounded-md border border-gray-200">
-                        <Text className="text-blue-600 font-medium">
-                          {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )
-              ))}
+            <View>
+              <Text className="text-lg font-semibold mb-3 text-gray-800">Lịch rảnh hiện tại</Text>
+              {availabilities.map(renderAvailabilityItem)}
             </View>
           )}
         </ScrollView>
       )}
     </View>
   );
-}
+};
+
+export default AvailabilityScreen;

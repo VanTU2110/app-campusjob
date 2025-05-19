@@ -9,13 +9,14 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
   const [profile, setProfile] = useState<StudentDetail | null>(null);
   const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("personal");
+  const [refreshing, setRefreshing] = useState(false);
   const { logout } = useAuth();
   const { clearStudentData } = useStudent();
   const router = useRouter();
@@ -70,7 +71,7 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
      
     }
   };
-
+  
   const VerifyBadge = ({ isVerified }: { isVerified: boolean }) => {
     if (isVerified) {
       return (
@@ -92,33 +93,39 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
     );
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const userUuid = await AsyncStorage.getItem("uuid");
-      if (userUuid) {
-        try {
-          // Fetch user data for verification status
-          const userResponse = await detailUser(userUuid);
-          if (userResponse?.data) {
-            setUserData(userResponse.data);
-          }
-
-          // Fetch student profile
-          const profileResponse = await getStudentProfile(userUuid);
-          if (profileResponse?.data) {
-            setProfile(profileResponse.data);
-          }
-        } catch (error) {
-          console.error("Error fetching data:", error);
-        } finally {
-          setLoading(false);
+  const fetchData = async () => {
+    setLoading(true);
+    const userUuid = await AsyncStorage.getItem("uuid");
+    if (userUuid) {
+      try {
+        // Fetch user data for verification status
+        const userResponse = await detailUser(userUuid);
+        if (userResponse?.data) {
+          setUserData(userResponse.data);
         }
-      } else {
+
+        // Fetch student profile
+        const profileResponse = await getStudentProfile(userUuid);
+        if (profileResponse?.data) {
+          setProfile(profileResponse.data);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
         setLoading(false);
       }
-    };
-    
+    } else {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -247,7 +254,18 @@ const StudentProfileScreen = ({ navigation }: { navigation: any }) => {
         </View>
       </View>
 
-      <ScrollView className="flex-1">
+      <ScrollView 
+  className="flex-1"
+  refreshControl={
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      colors={["#6366f1"]} // Màu sắc của indicator (tuỳ chọn)
+      tintColor="#6366f1" // Màu sắc của indicator (tuỳ chọn)
+    />
+  }
+>
+
         {profile ? (
           <>
             {/* Profile Card */}
