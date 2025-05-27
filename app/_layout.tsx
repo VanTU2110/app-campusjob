@@ -55,7 +55,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="auth" options={{ headerShown: false }} />
                 <Stack.Screen name="conversations/[uuid]" options={{ title: 'Tin nhắn',headerShown: false }} />
                 <Stack.Screen name="skill" options={{ title: 'Kỹ năng',headerShown: false }} />
-                <Stack.Screen name = "warnings" options={{ title: 'Cảnh báo',headerShown: true }} />
+                <Stack.Screen name = "warnings/index" options={{ title: 'Cảnh báo',headerShown: true }} />
                 <Stack.Screen name="onboarding" options={{ title: 'Onboarding',headerShown: false }} />
                 <Stack.Screen name="+not-found" />
               </Stack>

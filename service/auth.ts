@@ -20,6 +20,14 @@ export const login = async (email: string, password: string) => {
     throw error.response?.data?.message || "Login failed!";
   }
 };
+export const logout = async () => {
+  try {
+    const response = await api.post(`/Auth/logout`);
+    return response.data; // Trả về thông tin logout thành công
+  } catch (error: any) {
+    throw error.response?.data?.message || "Logout failed!";  
+  }
+};
 export const verifyUser = async(params:verifyUserParams):Promise<UserResponse> =>{
   try {
       const response = await api.post<UserResponse>(`Auth/verify-user`,params)

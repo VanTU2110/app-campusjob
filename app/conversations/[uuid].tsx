@@ -100,7 +100,7 @@ const parseJobInvite = (content: string): { isJobInvite: boolean; job?: JobInvit
         
         // Tạo kết nối SignalR - thay thế URL bằng URL thực tế của server SignalR
         const connection = new HubConnectionBuilder()
-          .withUrl('http://192.168.0.107:5109/chatHub', {
+          .withUrl('http://192.168.0.106:5109/chatHub', {
             skipNegotiation: true,
             transport: SignalR.HttpTransportType.WebSockets
           })

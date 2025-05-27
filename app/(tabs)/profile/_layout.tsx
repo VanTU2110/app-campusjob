@@ -8,8 +8,8 @@ export default function ProfileLayout() {
       <Stack.Screen name="add" options={{ title: "Thêm hồ sơ" }} />
       <Stack.Screen name="cv" options={{ title: "CV" }} />
       <Stack.Screen name="freetime" options={{ title: "Lịch rảnh" }} />
-      <Stack.Screen name="uploadCV/[studentUuid]" options={{ title: "Tải lên CV" }} />
-      
+      <Stack.Screen name="uploadCV" options={{ title: "Tải lên CV" }} />
+      <Stack.Screen name="detail/[uuid]" options={{ title: "Chi tiết hồ sơ" }} />
     </Stack>
   );
 }

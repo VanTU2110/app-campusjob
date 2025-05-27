@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { login as apiLogin } from '../service/auth'; // Import API login function
+import { login as apiLogin,logout as apiLogout } from '../service/auth'; // Import API login function
 import api from '../service/api'; // Import API instance
 
 // Define the context types
@@ -95,10 +95,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Logout function
+    // Logout function
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
+      // Gọi API logout trước khi clear local data
+      try {
+        await apiLogout();
+        console.log('API logout successful');
+      } catch (apiError) {
+        // Log lỗi nhưng vẫn tiếp tục clear local data
+        console.warn('API logout failed, but continuing with local cleanup:', apiError);
+      }
+      
       // Remove auth header
       delete api.defaults.headers.common['Authorization'];
       
@@ -112,10 +121,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Logout successful, cleared auth data');
     } catch (error) {
       console.error('Logout failed:', error);
+      // Trong trường hợp lỗi, vẫn clear local data để đảm bảo user không bị stuck
+      try {
+        delete api.defaults.headers.common['Authorization'];
+        setUuid(null);
+        setToken(null);
+        await AsyncStorage.multiRemove([UUID_STORAGE_KEY, TOKEN_STORAGE_KEY]);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup after logout error:', cleanupError);
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
 
   // Context value
   const contextValue: AuthContextType = {

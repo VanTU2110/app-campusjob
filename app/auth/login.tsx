@@ -57,11 +57,10 @@ const LoginScreen = () => {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View className="flex-1 justify-center items-center bg-blue-50 px-6 py-12">
           {/* Logo và hình ảnh */}
-          <View className="w-24 h-24 bg-blue-100 rounded-full items-center justify-center mb-6">
+                    <View className="w-24 h-24 bg-blue-100 rounded-full items-center justify-center mb-6 overflow-hidden">
             <Image
-              source={{ uri: "../../assets/images/campusjob-logo.png" }}
-              className="w-16 h-16"
-              resizeMode="contain"
+              source={require("../../assets/images/campusjob-logo.png")}
+              style={{ width: 96, height: 96, borderRadius: 48, resizeMode: 'cover' }}
             />
           </View>
           
