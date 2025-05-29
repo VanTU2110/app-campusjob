@@ -13,7 +13,7 @@ export interface GetPageApplyJobParams {
 export interface ApplyItem {
     studentUuid : string;
     jobUuid : string;
-    status : 'cancelled' | 'pending' | 'approved' | 'rejected';
+    status : 'pending' |'interviewing'|'accepted' |  'rejected'|'cancelled' |'hired';
     coverLetter : string;
     note : string;
     appliedAt: string;
@@ -49,3 +49,10 @@ export interface CheckApplyResponse {
         message: string;
     };
 }
+  export interface UpdateStatusResponse {
+    data: ApplyItem;
+    error: {
+      code: string; 
+      message: string;
+    };
+  }
